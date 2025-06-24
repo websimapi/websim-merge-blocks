@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const titleScreen = document.getElementById('title-screen');
     const gameScreen = document.getElementById('game-screen');
     const gameBoard = document.getElementById('game-board');
+    const gameOverlay = document.getElementById('game-overlay');
     const backButton = document.getElementById('back-btn');
     const scoreElement = document.getElementById('score');
     const header = document.querySelector('header');
@@ -131,6 +132,13 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBoard();
     };
 
+    const deselectBlock = () => {
+        if (selectedBlockIndex !== -1) {
+            selectedBlockIndex = -1;
+            renderBoard();
+        }
+    };
+
     const renderBoard = () => {
         gameBoard.innerHTML = ''; // Clear board before rendering
         
@@ -238,6 +246,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     backButton.addEventListener('click', showTitleScreen);
+
+    // If the user clicks on an empty cell (via the game board) or outside the game board area, deselect the block.
+    // Clicks on blocks themselves are stopped from propagating, so they won't trigger this.
+    gameBoard.addEventListener('click', deselectBlock);
+    gameOverlay.addEventListener('click', deselectBlock);
+    document.addEventListener('click', (event) => {
+        // This handles clicks completely outside the game-screen (e.g., on the header)
+        if (gameScreen.classList.contains('active') && !gameScreen.contains(event.target)) {
+            deselectBlock();
+        }
+    });
 
     // Re-render on window resize to adjust block sizes
     window.addEventListener('resize', () => {
