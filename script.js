@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let boardState = [];
     let score = 0;
     let spawnInterval = null;
+    let selectedBlockIndex = -1;
 
     const getNewBlockValue = () => {
         // This function determines the value of a new block based on the score.
@@ -73,6 +74,18 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBoard(); // Render after spawning to show the new block
     };
 
+    const handleBlockClick = (index) => {
+        if (selectedBlockIndex === index) {
+            // Clicked the same block, so deselect it
+            selectedBlockIndex = -1;
+        } else {
+            // Clicked a new block, select it
+            selectedBlockIndex = index;
+        }
+        // Re-render the board to show the selection change
+        renderBoard();
+    };
+
     const renderBoard = () => {
         gameBoard.innerHTML = ''; // Clear board before rendering
         
@@ -109,6 +122,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Adjust font size based on cell size
                 block.style.fontSize = `${cellSize * 0.4}px`;
 
+                // Add click listener for selection
+                block.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevents clicks from propagating to board
+                    handleBlockClick(i);
+                });
+                
+                // Add selected class if this block is the selected one
+                if (i === selectedBlockIndex) {
+                    block.classList.add('selected');
+                }
 
                 gameBoard.appendChild(block);
             }
@@ -127,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset score
         score = 0;
         scoreElement.textContent = score;
+        selectedBlockIndex = -1; // Reset selection on new game
 
         // Initialize board state with all zeros
         boardState = new Array(gridSize * gridSize).fill(0);
@@ -159,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearInterval(spawnInterval);
             spawnInterval = null;
         }
+        selectedBlockIndex = -1; // Reset selection
     }
 
     difficultyButtons.forEach(button => {

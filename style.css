@@ -123,6 +123,12 @@ h1 {
     z-index: 10;
 }
 
+.block.selected, .block.selected:hover {
+    outline: 4px solid #2ecc71; /* Bright green */
+    z-index: 20;
+    transform: scale(1.05);
+}
+
 #back-btn {
     margin-top: 20px;
     font-size: 1rem;
