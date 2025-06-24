@@ -98,7 +98,7 @@ h1 {
     width: 120px;
     height: 200px;
     position: relative;
-    background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 50%, #FFA500 100%);
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     border: 2px solid var(--background-color);
 }
