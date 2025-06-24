@@ -230,8 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const engine = Matter.Engine.create();
         const world = engine.world;
         
-        // Reduce gravity for slower particle flow
-        engine.world.gravity.y = 0.3;
+        // Reduce gravity for slower sand flow
+        engine.world.gravity.y = 0.5;
         
         // Set up canvas dimensions
         canvas.width = 120;
@@ -284,14 +284,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Top funnel - angled walls that narrow toward center
         const topFunnelLeft = Matter.Bodies.rectangle(30, 75, 60, wallThickness, { 
             isStatic: true, 
-            angle: Math.PI / 6,
+            angle: Math.PI / 6, // 30 degrees
             render: { fillStyle: '#8B4513' },
             friction: 0.1,
             frictionStatic: 0.1
         });
         const topFunnelRight = Matter.Bodies.rectangle(90, 75, 60, wallThickness, { 
             isStatic: true, 
-            angle: -Math.PI / 6,
+            angle: -Math.PI / 6, // -30 degrees
             render: { fillStyle: '#8B4513' },
             friction: 0.1,
             frictionStatic: 0.1
@@ -300,27 +300,27 @@ document.addEventListener('DOMContentLoaded', () => {
         // Bottom funnel - angled walls that widen from center
         const bottomFunnelLeft = Matter.Bodies.rectangle(30, 125, 60, wallThickness, { 
             isStatic: true, 
-            angle: -Math.PI / 6,
+            angle: -Math.PI / 6, // -30 degrees
             render: { fillStyle: '#8B4513' },
             friction: 0.1,
             frictionStatic: 0.1
         });
         const bottomFunnelRight = Matter.Bodies.rectangle(90, 125, 60, wallThickness, { 
             isStatic: true, 
-            angle: Math.PI / 6,
+            angle: Math.PI / 6, // 30 degrees
             render: { fillStyle: '#8B4513' },
             friction: 0.1,
             frictionStatic: 0.1
         });
         
-        // Small opening at center
-        const centerLeftWall = Matter.Bodies.rectangle(55, centerY, wallThickness, 24, { 
+        // Small opening at center - make hole larger and walls longer
+        const centerLeftWall = Matter.Bodies.rectangle(52, centerY, wallThickness, 24, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' },
             friction: 0.1,
             frictionStatic: 0.1
         });
-        const centerRightWall = Matter.Bodies.rectangle(65, centerY, wallThickness, 24, { 
+        const centerRightWall = Matter.Bodies.rectangle(68, centerY, wallThickness, 24, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' },
             friction: 0.1,
@@ -335,122 +335,27 @@ document.addEventListener('DOMContentLoaded', () => {
             centerLeftWall, centerRightWall
         ]);
 
-        // Weather cycle variables
-        let weatherState = 'cloudy'; // 'cloudy', 'cooling', 'raining', 'heating', 'steaming'
-        let stateTimer = 0;
-        let cloudParticles = [];
-        let isHeating = false;
-
-        // Create initial cloud particles (invisible at first)
+        // Create sand grains
         sandGrains = [];
         for (let i = 0; i < numGrains; i++) {
-            const particle = Matter.Bodies.circle(
+            const grain = Matter.Bodies.circle(
                 25 + Math.random() * 70, 
                 25 + Math.random() * 40, 
-                2.5,
+                2.5, // Increased from 1.5 to 2.5
                 {
-                    render: { fillStyle: '#D3D3D3' }, // Start as grey clouds
-                    restitution: 0.3,
-                    friction: 0.3,
-                    frictionAir: 0.01,
+                    render: { fillStyle: '#F4A460' },
+                    restitution: 0.4, // Increased restitution to help particles bounce apart
+                    friction: 0.2, // Reduced friction more
+                    frictionAir: 0.02, // Increased air friction to help separate particles
                     collisionFilter: {
-                        group: -1
-                    }
+                        group: -1 // Negative group makes particles repel each other slightly
+                    },
+                    density: 0.001 // Lower density makes particles lighter and less likely to stick
                 }
             );
-            sandGrains.push(particle);
-            Matter.World.add(world, particle);
+            sandGrains.push(grain);
+            Matter.World.add(world, grain);
         }
-
-        // Weather cycle simulation
-        const updateWeatherCycle = () => {
-            stateTimer++;
-            
-            // Update particle colors based on weather state and position
-            sandGrains.forEach(particle => {
-                const y = particle.position.y;
-                
-                if (weatherState === 'cloudy') {
-                    // Grey clouds in top chamber
-                    if (y < 80) {
-                        particle.render.fillStyle = '#D3D3D3';
-                    }
-                } else if (weatherState === 'cooling') {
-                    // Blue cooling clouds
-                    if (y < 80) {
-                        particle.render.fillStyle = '#87CEEB';
-                    }
-                } else if (weatherState === 'raining') {
-                    // Ice blue when falling, water blue in middle/bottom
-                    if (y < 80) {
-                        particle.render.fillStyle = '#E6F3FF'; // Light blue ice
-                    } else if (y < 120) {
-                        particle.render.fillStyle = '#ADD8E6'; // Light blue water
-                    } else {
-                        particle.render.fillStyle = '#4169E1'; // Blue water
-                    }
-                } else if (weatherState === 'heating') {
-                    // Water heating up
-                    if (y > 120) {
-                        particle.render.fillStyle = '#4169E1'; // Blue water
-                    }
-                } else if (weatherState === 'steaming') {
-                    // Steam particles - teleport them to top when they reach certain height
-                    if (y > 120) {
-                        particle.render.fillStyle = '#F0F8FF'; // Light steam
-                        // Teleport particle to top chamber when it's been heated enough
-                        if (stateTimer > 30) { // Give some time for heating visual effect
-                            Matter.Body.setPosition(particle, {
-                                x: 25 + Math.random() * 70,
-                                y: 25 + Math.random() * 40
-                            });
-                            Matter.Body.setVelocity(particle, { x: 0, y: 0 }); // Reset velocity
-                            particle.render.fillStyle = '#F5F5F5'; // White clouds forming
-                        }
-                    } else if (y < 80) {
-                        particle.render.fillStyle = '#F5F5F5'; // White clouds forming
-                    }
-                }
-            });
-
-            // State transitions
-            if (weatherState === 'cloudy' && stateTimer > 120) {
-                weatherState = 'cooling';
-                stateTimer = 0;
-            } else if (weatherState === 'cooling' && stateTimer > 60) {
-                weatherState = 'raining';
-                stateTimer = 0;
-                // Increase gravity for rain
-                engine.world.gravity.y = 0.5;
-            } else if (weatherState === 'raining') {
-                // Check if all particles are in bottom chamber
-                const bottomParticles = sandGrains.filter(p => p.position.y > 140);
-                if (bottomParticles.length === sandGrains.length) {
-                    weatherState = 'heating';
-                    stateTimer = 0;
-                    engine.world.gravity.y = 0.3; // Reduce gravity
-                }
-            } else if (weatherState === 'heating' && stateTimer > 90) {
-                weatherState = 'steaming';
-                stateTimer = 0;
-                // Keep normal gravity for steaming process
-                engine.world.gravity.y = 0.3;
-            } else if (weatherState === 'steaming' && stateTimer > 60) {
-                // Check if particles are back in top chamber
-                const topParticles = sandGrains.filter(p => p.position.y < 80);
-                if (topParticles.length === sandGrains.length) {
-                    weatherState = 'cloudy';
-                    stateTimer = 0;
-                    engine.world.gravity.y = 0.3; // Normal gravity
-                    // Spawn new block and reset cycle
-                    spawnRandomBlock();
-                    resetWeatherCycle();
-                }
-            }
-        };
-
-        // Add weather cycle to engine update
-        Matter.Events.on(engine, 'beforeUpdate', updateWeatherCycle);
 
         // Start the physics engine
         Matter.Engine.run(engine);
@@ -461,36 +366,58 @@ document.addEventListener('DOMContentLoaded', () => {
         hourglassWorld = world;
         hourglassCanvas = canvas;
         hourglassRender = render;
+
+        // Check for sand falling through
+        checkSandFall();
     };
 
-    const resetWeatherCycle = () => {
+    const checkSandFall = () => {
+        const checkInterval = setInterval(() => {
+            if (!hourglassEngine) {
+                clearInterval(checkInterval);
+                return;
+            }
+
+            // Count sand grains in bottom chamber (y > 140)
+            const bottomGrains = sandGrains.filter(grain => grain.position.y > 140);
+            
+            // If all grains are in bottom chamber, spawn new block and reset
+            if (bottomGrains.length === sandGrains.length) {
+                spawnRandomBlock();
+                resetHourglass();
+            }
+        }, 100);
+    };
+
+    const resetHourglass = () => {
         if (!hourglassWorld) return;
 
-        // Remove all particles
-        sandGrains.forEach(particle => {
-            Matter.World.remove(hourglassWorld, particle);
+        // Remove all sand grains
+        sandGrains.forEach(grain => {
+            Matter.World.remove(hourglassWorld, grain);
         });
 
-        // Create new cloud particles in top chamber
+        // Create new sand grains in top chamber
         const config = GAME_CONFIG[currentDifficulty];
         sandGrains = [];
         for (let i = 0; i < config.sandGrains; i++) {
-            const particle = Matter.Bodies.circle(
+            const grain = Matter.Bodies.circle(
                 25 + Math.random() * 70, 
                 25 + Math.random() * 40, 
-                2.5,
+                2.5, // Increased from 1.5 to 2.5
                 {
-                    render: { fillStyle: '#D3D3D3' }, // Start as grey clouds
-                    restitution: 0.3,
-                    friction: 0.3,
-                    frictionAir: 0.01,
+                    render: { fillStyle: '#F4A460' },
+                    restitution: 0.4, // Increased restitution to help particles bounce apart
+                    friction: 0.2, // Reduced friction more
+                    frictionAir: 0.02, // Increased air friction to help separate particles
                     collisionFilter: {
-                        group: -1
-                    }
+                        group: -1 // Negative group makes particles repel each other slightly
+                    },
+                    density: 0.001 // Lower density makes particles lighter and less likely to stick
                 }
             );
-            sandGrains.push(particle);
-            Matter.World.add(hourglassWorld, particle);
+            sandGrains.push(grain);
+            Matter.World.add(hourglassWorld, grain);
         }
     };
 
