@@ -380,43 +380,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // Count sand grains in bottom chamber (y > 140)
             const bottomGrains = sandGrains.filter(grain => grain.position.y > 140);
             
-            // If all grains are in bottom chamber, spawn new block and reset
+            // If all grains are in bottom chamber, spawn new block and rotate hourglass
             if (bottomGrains.length === sandGrains.length) {
                 spawnRandomBlock();
-                resetHourglass();
+                rotateHourglass();
             }
         }, 100);
     };
 
-    const resetHourglass = () => {
-        if (!hourglassWorld) return;
+    const rotateHourglass = () => {
+        if (!hourglassCanvas) return;
 
-        // Remove all sand grains
-        sandGrains.forEach(grain => {
-            Matter.World.remove(hourglassWorld, grain);
-        });
-
-        // Create new sand grains in top chamber
-        const config = GAME_CONFIG[currentDifficulty];
-        sandGrains = [];
-        for (let i = 0; i < config.sandGrains; i++) {
-            const grain = Matter.Bodies.circle(
-                25 + Math.random() * 70, 
-                25 + Math.random() * 40, 
-                2.5, // Increased from 1.5 to 2.5
-                {
-                    render: { fillStyle: '#F4A460' },
-                    restitution: 0.3, // Increased restitution to help particles bounce apart
-                    friction: 0.3, // Reduced friction slightly
-                    frictionAir: 0.01,
-                    collisionFilter: {
-                        group: -1 // Negative group makes particles repel each other slightly
-                    }
-                }
-            );
-            sandGrains.push(grain);
-            Matter.World.add(hourglassWorld, grain);
-        }
+        // Rotate the canvas 180 degrees
+        hourglassCanvas.style.transform = hourglassCanvas.style.transform === 'rotate(180deg)' ? 'rotate(0deg)' : 'rotate(180deg)';
+        hourglassCanvas.style.transition = 'transform 1s ease-in-out';
     };
 
     const destroyHourglass = () => {
