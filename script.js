@@ -232,11 +232,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Set gravity based on difficulty - weaker for easy mode
         if (currentDifficulty === 'easy') {
-            engine.world.gravity.y = 0.075;
+            engine.world.gravity.y = 0.025;
         } else if (currentDifficulty === 'medium') {
-            engine.world.gravity.y = 0.5;
+            engine.world.gravity.y = 0.167;
         } else { // hard mode
-            engine.world.gravity.y = 0.7;
+            engine.world.gravity.y = 0.233;
         }
         
         // Set up canvas dimensions
