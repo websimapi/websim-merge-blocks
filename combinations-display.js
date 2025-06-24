@@ -86,11 +86,30 @@ export class CombinationsDisplay {
                 if (v1 === v2) {
                     combinations.push({ type: 'merge', v1, v2, result: v1 + 1 });
                 } else if ((v1 + v2) % 2 === 0) {
-                    combinations.push({ type: 'split', v1, v2, result: (v1 + v2) / 2 });
+                    combinations.push({ type: 'split', v1: Math.min(v1, v2), v2: Math.max(v1, v2), result: (v1 + v2) / 2 });
                 }
             }
         }
-        return combinations;
+
+        // Filter out duplicate combination types
+        const uniqueCombinations = [];
+        const seenCombinations = new Set();
+
+        for (const combo of combinations) {
+            let key;
+            if (combo.type === 'merge') {
+                key = `merge-${combo.v1}`;
+            } else { // split
+                key = `split-${combo.v1}-${combo.v2}`;
+            }
+
+            if (!seenCombinations.has(key)) {
+                seenCombinations.add(key);
+                uniqueCombinations.push(combo);
+            }
+        }
+
+        return uniqueCombinations;
     }
 
     getNeighborIndices(index, gridSize) {
