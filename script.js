@@ -11,12 +11,46 @@ document.addEventListener('DOMContentLoaded', () => {
     const GAME_CONFIG = {
         easy: { gridSize: 4, initialBlocks: 2 },
         medium: { gridSize: 5, initialBlocks: 5 },
-        hard: { gridSize: 6, initialBlocks: 8 },
+        hard: { gridSize: 6, initialBlocks: 6 }, // Reduced from 8 to 6
     };
 
     let gridSize = 0;
     let boardState = [];
     let score = 0;
+    let spawnInterval = null;
+
+    const getNewBlockValue = () => {
+        // This function determines the value of a new block based on the score.
+        // Higher scores have a chance to spawn higher value blocks.
+
+        const rand = Math.random();
+
+        if (score < 100) { // Score 0-99
+            // 100% chance for 1
+            return 1;
+        } else if (score < 500) { // Score 100-499
+            // 80% for 1, 20% for 2
+            return rand < 0.8 ? 1 : 2;
+        } else if (score < 1500) { // Score 500-1499
+            // 60% for 1, 30% for 2, 10% for 3
+            if (rand < 0.6) return 1;
+            if (rand < 0.9) return 2;
+            return 3;
+        } else if (score < 3000) { // Score 1500-2999
+            // 40% for 1, 35% for 2, 20% for 3, 5% for 4
+            if (rand < 0.40) return 1;
+            if (rand < 0.75) return 2;
+            if (rand < 0.95) return 3;
+            return 4;
+        } else { // Score 3000+
+            // 20% for 1, 30% for 2, 30% for 3, 15% for 4, 5% for 5
+            if (rand < 0.20) return 1;
+            if (rand < 0.50) return 2;
+            if (rand < 0.80) return 3;
+            if (rand < 0.95) return 4;
+            return 5;
+        }
+    };
 
     const getEmptyCells = () => {
         const emptyCells = [];
@@ -35,7 +69,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-        boardState[randomIndex] = 1; // Always spawn a '1' for now
+        boardState[randomIndex] = getNewBlockValue(); 
+        renderBoard(); // Render after spawning to show the new block
     };
 
     const renderBoard = () => {
@@ -84,6 +119,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const config = GAME_CONFIG[difficulty];
         gridSize = config.gridSize;
         
+        // Clear any existing game interval
+        if (spawnInterval) {
+            clearInterval(spawnInterval);
+        }
+
         // Reset score
         score = 0;
         scoreElement.textContent = score;
@@ -99,6 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
         titleScreen.classList.remove('active');
         gameScreen.classList.add('active');
         header.classList.add('in-game');
+        
+        // Start spawning blocks periodically
+        spawnInterval = setInterval(spawnRandomBlock, 3000); // Spawn a new block every 3 seconds
 
         // Delay rendering to allow screen transition and correct board size calculation
         requestAnimationFrame(() => {
@@ -111,6 +154,11 @@ document.addEventListener('DOMContentLoaded', () => {
         gameScreen.classList.remove('active');
         header.classList.remove('in-game');
         gameBoard.innerHTML = '';
+        // Stop spawning blocks when returning to menu
+        if (spawnInterval) {
+            clearInterval(spawnInterval);
+            spawnInterval = null;
+        }
     }
 
     difficultyButtons.forEach(button => {
