@@ -137,7 +137,7 @@ export class DragHandler {
         const isTargetingIndicator = this.dragEndIndex !== -1 && this.gameState.nextSpawnIndices.includes(this.dragEndIndex);
 
         if (this.dragEndIndex !== -1 && this.dragEndIndex !== this.dragStartIndex) {
-             if (isTargetingIndicator && this.gameState.currentDifficulty === 'easy') {
+             if (isTargetingIndicator && (this.gameState.currentDifficulty === 'easy' || this.gameState.currentDifficulty === 'zen')) {
                 if (this.onIndicatorDrop) {
                     this.onIndicatorDrop(this.dragEndIndex);
                 }
@@ -165,8 +165,8 @@ export class DragHandler {
         let boardChanged = false;
 
         const isTargetingIndicator = this.gameState.nextSpawnIndices.includes(endIndex);
-        if (isTargetingIndicator && this.gameState.currentDifficulty !== 'easy') {
-            return false; // Disallow interaction with indicators on non-easy modes.
+        if (isTargetingIndicator && this.gameState.currentDifficulty !== 'easy' && this.gameState.currentDifficulty !== 'zen') {
+            return false; // Disallow interaction with indicators on non-easy/zen modes.
         }
         
         if (endValue === 0) {

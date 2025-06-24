@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const isIndicatorCell = gameState.nextSpawnIndices.includes(clickedIndex);
         if (isIndicatorCell) {
-            if (gameState.currentDifficulty === 'easy') {
+            if (gameState.currentDifficulty === 'easy' || gameState.currentDifficulty === 'zen') {
                 spawnEarly(clickedIndex);
             }
             // On other difficulties, or if it's an indicator, we do nothing else.
@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function spawnEarly(index) {
-        if (gameState.currentDifficulty !== 'easy' || !gameState.nextSpawnIndices.includes(index)) {
+        if ((gameState.currentDifficulty !== 'easy' && gameState.currentDifficulty !== 'zen') || !gameState.nextSpawnIndices.includes(index)) {
             return;
         }
 

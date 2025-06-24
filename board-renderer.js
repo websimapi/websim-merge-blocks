@@ -68,7 +68,7 @@ export class BoardRenderer {
         cell.addEventListener('click', (e) => {
             // Prevent clicks from propagating to the overlay if this cell has an indicator
             const isIndicatorCell = this.gameState.nextSpawnIndices.includes(index);
-            if(isIndicatorCell && this.gameState.currentDifficulty === 'easy'){
+            if(isIndicatorCell && (this.gameState.currentDifficulty === 'easy' || this.gameState.currentDifficulty === 'zen')){
                 e.stopPropagation();
             }
             this.onEmptyCellClick(index);
