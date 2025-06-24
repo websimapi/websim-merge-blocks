@@ -15,6 +15,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
     const themeInput = document.getElementById('theme-input');
 
+    const levelDescriptors = [
+        "a basic", "an improved", "an advanced", "a superior", "a masterful", 
+        "an ultimate", "a legendary", "a mythical", "a divine", "a supreme",
+        "an arch", "a celestial", "an ethereal", "an astral", "a cosmic"
+    ];
+
     // Game modules
     const gameState = new GameState();
     const hourglassManager = new HourglassManager(gameState);
@@ -165,9 +171,10 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.render(); // Show loading indicator
 
         try {
+            const descriptor = levelDescriptors[value - 1] || `an evolved`;
             const result = await websim.imageGen({
-                prompt: `A cute, simple icon of a level ${value} ${gameState.theme}. Sticker style, simple, iconic, on a plain background.`,
-                transparent: true,
+                prompt: `A cute, simple icon of ${descriptor} ${gameState.theme}. Sticker style, on a white background. Do not include any text or numbers.`,
+                transparent: false,
                 aspect: "square"
             });
             gameState.setImageForValue(value, result.url);
