@@ -313,18 +313,20 @@ document.addEventListener('DOMContentLoaded', () => {
             frictionStatic: 0.1
         });
         
-        // Small opening at center - make hole larger and walls longer
-        const centerLeftWall = Matter.Bodies.rectangle(52, centerY, wallThickness, 24, { 
+        // Small opening at center - make hole larger and walls longer with rounded tips
+        const centerLeftWall = Matter.Bodies.rectangle(55, centerY, wallThickness, 24, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' },
             friction: 0.1,
-            frictionStatic: 0.1
+            frictionStatic: 0.1,
+            chamfer: { radius: 2 } // Round the corners/tips
         });
-        const centerRightWall = Matter.Bodies.rectangle(68, centerY, wallThickness, 24, { 
+        const centerRightWall = Matter.Bodies.rectangle(65, centerY, wallThickness, 24, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' },
             friction: 0.1,
-            frictionStatic: 0.1
+            frictionStatic: 0.1,
+            chamfer: { radius: 2 } // Round the corners/tips
         });
 
         // Add walls to world
@@ -344,13 +346,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 2.5, // Increased from 1.5 to 2.5
                 {
                     render: { fillStyle: '#F4A460' },
-                    restitution: 0.4, // Increased restitution to help particles bounce apart
-                    friction: 0.2, // Reduced friction more
-                    frictionAir: 0.02, // Increased air friction to help separate particles
+                    restitution: 0.3, // Increased restitution to help particles bounce apart
+                    friction: 0.3, // Reduced friction slightly
+                    frictionAir: 0.01,
                     collisionFilter: {
                         group: -1 // Negative group makes particles repel each other slightly
                     },
-                    density: 0.001 // Lower density makes particles lighter and less likely to stick
+                    chamfer: { radius: 1 } // Slight rounding for smoother collisions
                 }
             );
             sandGrains.push(grain);
@@ -407,13 +409,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 2.5, // Increased from 1.5 to 2.5
                 {
                     render: { fillStyle: '#F4A460' },
-                    restitution: 0.4, // Increased restitution to help particles bounce apart
-                    friction: 0.2, // Reduced friction more
-                    frictionAir: 0.02, // Increased air friction to help separate particles
+                    restitution: 0.3, // Increased restitution to help particles bounce apart
+                    friction: 0.3, // Reduced friction slightly
+                    frictionAir: 0.01,
                     collisionFilter: {
                         group: -1 // Negative group makes particles repel each other slightly
                     },
-                    density: 0.001 // Lower density makes particles lighter and less likely to stick
+                    chamfer: { radius: 1 } // Slight rounding for smoother collisions
                 }
             );
             sandGrains.push(grain);
