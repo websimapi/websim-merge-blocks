@@ -26,6 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let hourglassCanvas = null;
     let hourglassRender = null;
     let currentDifficulty = 'easy';
+    let isDragging = false;
+    let dragStartIndex = -1;
+    let dragEndIndex = -1;
+    let dragLine = null;
 
     const getNewBlockValue = () => {
         // This function determines the value of a new block based on the score.
@@ -97,6 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const handleBlockClick = (clickedIndex) => {
+        // Skip if we're in the middle of a drag operation
+        if (isDragging) return;
+        
         if (selectedBlockIndex === -1) {
             // No block is selected, so select this one.
             selectedBlockIndex = clickedIndex;
@@ -139,6 +146,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const handleEmptyCellClick = (clickedIndex) => {
+        // Skip if we're in the middle of a drag operation
+        if (isDragging) return;
+        
         if (selectedBlockIndex === -1) {
             // Nothing is selected, so clicking an empty cell does nothing.
             return;
@@ -158,6 +168,135 @@ document.addEventListener('DOMContentLoaded', () => {
             // It's not a neighbor. Deselect the block as per instructions.
             deselectBlock();
         }
+    };
+
+    const getIndexFromPosition = (x, y) => {
+        const boardRect = gameBoard.getBoundingClientRect();
+        const relativeX = x - boardRect.left;
+        const relativeY = y - boardRect.top;
+        
+        const boardSize = gameBoard.clientWidth;
+        const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
+        const cellSize = (boardSize - (gridSize + 1) * gap) / gridSize;
+        
+        const col = Math.floor((relativeX - gap) / (cellSize + gap));
+        const row = Math.floor((relativeY - gap) / (cellSize + gap));
+        
+        if (col >= 0 && col < gridSize && row >= 0 && row < gridSize) {
+            return row * gridSize + col;
+        }
+        return -1;
+    };
+
+    const getBlockCenterPosition = (index) => {
+        const boardRect = gameBoard.getBoundingClientRect();
+        const boardSize = gameBoard.clientWidth;
+        const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
+        const cellSize = (boardSize - (gridSize + 1) * gap) / gridSize;
+        
+        const row = Math.floor(index / gridSize);
+        const col = index % gridSize;
+        
+        const centerX = boardRect.left + gap + col * (cellSize + gap) + cellSize / 2;
+        const centerY = boardRect.top + gap + row * (cellSize + gap) + cellSize / 2;
+        
+        return { x: centerX, y: centerY };
+    };
+
+    const createDragLine = (startPos, endPos) => {
+        if (dragLine) {
+            dragLine.remove();
+        }
+        
+        dragLine = document.createElement('div');
+        dragLine.style.position = 'fixed';
+        dragLine.style.background = '#2ecc71';
+        dragLine.style.height = '4px';
+        dragLine.style.borderRadius = '2px';
+        dragLine.style.pointerEvents = 'none';
+        dragLine.style.zIndex = '1000';
+        dragLine.style.transformOrigin = 'left center';
+        
+        const deltaX = endPos.x - startPos.x;
+        const deltaY = endPos.y - startPos.y;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        const angle = Math.atan2(deltaY, deltaX);
+        
+        dragLine.style.width = distance + 'px';
+        dragLine.style.left = startPos.x + 'px';
+        dragLine.style.top = startPos.y + 'px';
+        dragLine.style.transform = `rotate(${angle}rad)`;
+        
+        document.body.appendChild(dragLine);
+    };
+
+    const removeDragLine = () => {
+        if (dragLine) {
+            dragLine.remove();
+            dragLine = null;
+        }
+    };
+
+    const handleDragStart = (startIndex, clientX, clientY) => {
+        if (boardState[startIndex] === 0) return false;
+        
+        isDragging = true;
+        dragStartIndex = startIndex;
+        selectedBlockIndex = startIndex;
+        renderBoard();
+        
+        const startPos = getBlockCenterPosition(startIndex);
+        createDragLine(startPos, { x: clientX, y: clientY });
+        
+        return true;
+    };
+
+    const handleDragMove = (clientX, clientY) => {
+        if (!isDragging) return;
+        
+        const startPos = getBlockCenterPosition(dragStartIndex);
+        createDragLine(startPos, { x: clientX, y: clientY });
+        
+        const currentIndex = getIndexFromPosition(clientX, clientY);
+        if (currentIndex !== dragEndIndex) {
+            dragEndIndex = currentIndex;
+        }
+    };
+
+    const handleDragEnd = () => {
+        if (!isDragging) return;
+        
+        removeDragLine();
+        
+        if (dragEndIndex !== -1 && dragEndIndex !== dragStartIndex) {
+            if (boardState[dragEndIndex] === 0) {
+                // Moving to empty cell
+                const isNeighbor = areNeighbors(dragStartIndex, dragEndIndex);
+                if (isNeighbor) {
+                    boardState[dragEndIndex] = boardState[dragStartIndex];
+                    boardState[dragStartIndex] = 0;
+                }
+            } else {
+                // Merging with another block
+                const isNeighbor = areNeighbors(dragStartIndex, dragEndIndex);
+                const sameValue = boardState[dragStartIndex] === boardState[dragEndIndex];
+                
+                if (isNeighbor && sameValue) {
+                    const mergedValue = boardState[dragEndIndex] + 1;
+                    boardState[dragEndIndex] = mergedValue;
+                    boardState[dragStartIndex] = 0;
+                    
+                    score += mergedValue;
+                    scoreElement.textContent = score;
+                }
+            }
+        }
+        
+        isDragging = false;
+        dragStartIndex = -1;
+        dragEndIndex = -1;
+        selectedBlockIndex = -1;
+        renderBoard();
     };
 
     const deselectBlock = () => {
@@ -213,6 +352,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 block.addEventListener('click', (e) => {
                     e.stopPropagation(); // Prevents clicks from propagating to board
                     handleBlockClick(i);
+                });
+
+                // Add mouse drag events
+                block.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    handleDragStart(i, e.clientX, e.clientY);
+                });
+
+                // Add touch drag events
+                block.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    handleDragStart(i, touch.clientX, touch.clientY);
                 });
                 
                 // Add selected class if this block is the selected one
@@ -516,5 +668,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gameScreen.classList.contains('active')) {
             renderBoard();
         }
+    });
+
+    // Add global mouse move and up events for drag functionality
+    document.addEventListener('mousemove', (e) => {
+        handleDragMove(e.clientX, e.clientY);
+    });
+
+    document.addEventListener('mouseup', () => {
+        handleDragEnd();
+    });
+
+    // Add global touch move and end events for drag functionality
+    document.addEventListener('touchmove', (e) => {
+        if (isDragging) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleDragMove(touch.clientX, touch.clientY);
+        }
+    });
+
+    document.addEventListener('touchend', () => {
+        handleDragEnd();
     });
 });
