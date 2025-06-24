@@ -254,9 +254,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Create chamber walls (simplified - just outer walls)
+        // Create hourglass walls
         const wallThickness = 4;
         const centerX = 60;
+        const centerY = 100;
         
         // Outer walls
         const topWall = Matter.Bodies.rectangle(centerX, 10, 100, wallThickness, { 
@@ -284,8 +285,62 @@ document.addEventListener('DOMContentLoaded', () => {
             frictionStatic: 0.05
         });
 
-        // Add walls to world
-        Matter.World.add(world, [topWall, bottomWall, leftWall, rightWall]);
+        // Top chamber diagonal walls (form the narrowing)
+        const topLeftDiagonal = Matter.Bodies.rectangle(35, 65, 50, wallThickness, {
+            isStatic: true,
+            angle: Math.PI / 4, // 45 degrees
+            render: { fillStyle: '#8B4513' },
+            friction: 0.05,
+            frictionStatic: 0.05
+        });
+        
+        const topRightDiagonal = Matter.Bodies.rectangle(85, 65, 50, wallThickness, {
+            isStatic: true,
+            angle: -Math.PI / 4, // -45 degrees
+            render: { fillStyle: '#8B4513' },
+            friction: 0.05,
+            frictionStatic: 0.05
+        });
+
+        // Bottom chamber diagonal walls (form the narrowing from bottom)
+        const bottomLeftDiagonal = Matter.Bodies.rectangle(35, 135, 50, wallThickness, {
+            isStatic: true,
+            angle: -Math.PI / 4, // -45 degrees
+            render: { fillStyle: '#8B4513' },
+            friction: 0.05,
+            frictionStatic: 0.05
+        });
+        
+        const bottomRightDiagonal = Matter.Bodies.rectangle(85, 135, 50, wallThickness, {
+            isStatic: true,
+            angle: Math.PI / 4, // 45 degrees
+            render: { fillStyle: '#8B4513' },
+            friction: 0.05,
+            frictionStatic: 0.05
+        });
+
+        // Narrow opening walls (parallel lines in the middle)
+        const leftNarrowWall = Matter.Bodies.rectangle(45, centerY, wallThickness, 20, {
+            isStatic: true,
+            render: { fillStyle: '#8B4513' },
+            friction: 0.05,
+            frictionStatic: 0.05
+        });
+        
+        const rightNarrowWall = Matter.Bodies.rectangle(75, centerY, wallThickness, 20, {
+            isStatic: true,
+            render: { fillStyle: '#8B4513' },
+            friction: 0.05,
+            frictionStatic: 0.05
+        });
+
+        // Add all walls to world
+        Matter.World.add(world, [
+            topWall, bottomWall, leftWall, rightWall,
+            topLeftDiagonal, topRightDiagonal,
+            bottomLeftDiagonal, bottomRightDiagonal,
+            leftNarrowWall, rightNarrowWall
+        ]);
 
         // Initialize weather system
         initializeWeatherCycle(world, numGrains);
