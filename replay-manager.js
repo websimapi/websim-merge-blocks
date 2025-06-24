@@ -80,6 +80,15 @@ export class ReplayManager {
         });
     }
 
+    finalizeGame(finalScore) {
+        this.recordEvent('game_end', {
+            finalScore: finalScore,
+            finalBoardState: [...this.gameState?.boardState]
+        });
+        this.currentReplay.finalScore = finalScore;
+        this.saveToStorage();
+    }
+
     saveToStorage() {
         try {
             localStorage.setItem('mergeBlocksReplay', JSON.stringify(this.currentReplay));
@@ -185,6 +194,9 @@ export class ReplayManager {
                 break;
             case 'image':
                 gameState.setImageForValue(event.data.value, event.data.url);
+                break;
+            case 'game_end':
+                console.log('Game ended with score:', event.data.finalScore);
                 break;
         }
         boardRenderer.renderBlocks();

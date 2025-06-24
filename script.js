@@ -154,6 +154,9 @@ document.addEventListener('DOMContentLoaded', () => {
         hourglassManager.destroy();
         finalScoreSpan.textContent = gameState.score;
         
+        // Finalize the replay with the final score
+        replayManager.finalizeGame(gameState.score);
+        
         gameScreen.classList.remove('active');
         replayScreen.classList.add('active');
         header.classList.remove('in-game');
@@ -407,13 +410,15 @@ document.addEventListener('DOMContentLoaded', () => {
             watchReplayMenuBtn.style.display = 'block';
             document.getElementById('continue-with-images-section').style.display = 'block';
             
-            // Calculate final score from replay events
-            let finalScore = 0;
-            storedReplay.events.forEach(event => {
-                if (event.type === 'move' && event.data.scoreGained) {
-                    finalScore += event.data.scoreGained;
-                }
-            });
+            // Use stored final score if available, otherwise calculate from events
+            let finalScore = storedReplay.finalScore || 0;
+            if (!storedReplay.finalScore) {
+                storedReplay.events.forEach(event => {
+                    if (event.type === 'move' && event.data.scoreGained) {
+                        finalScore += event.data.scoreGained;
+                    }
+                });
+            }
             
             replayTheme.textContent = storedReplay.theme || 'Blocks';
             replayDifficulty.textContent = storedReplay.difficulty;
