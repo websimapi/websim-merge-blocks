@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameOverlay = document.getElementById('game-overlay');
     const header = document.querySelector('header');
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+    const themeInput = document.getElementById('theme-input');
 
     // Game modules
     const gameState = new GameState();
@@ -29,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up drag completion callback
     dragHandler.onDragComplete = () => {
         boardRenderer.render();
+        checkAllBlockImages();
     };
 
     function spawnRandomBlock() {
@@ -77,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         boardRenderer.render();
+        checkAllBlockImages();
     }
 
     function gameOver() {
@@ -124,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         boardRenderer.render();
+        checkAllBlockImages();
     }
 
     function handleEmptyCellClick(clickedIndex) {
@@ -132,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!gameState.hasSelectedBlock()) {
             gameState.placeBlock(clickedIndex, gameState.getNewBlockValue());
             boardRenderer.render();
+            checkAllBlockImages();
             return;
         }
 
@@ -143,18 +148,56 @@ document.addEventListener('DOMContentLoaded', () => {
             gameState.removeBlock(selectedIndex);
             gameState.deselectBlock();
             boardRenderer.render();
+            checkAllBlockImages();
         } else {
             gameState.deselectBlock();
             boardRenderer.render();
         }
     }
 
+    async function generateImageForValue(value) {
+        if (!gameState.theme || gameState.getImageForValue(value)) {
+            return;
+        }
+
+        // Set status to loading to prevent multiple requests
+        gameState.setImageForValue(value, 'loading');
+        boardRenderer.render(); // Show loading indicator
+
+        try {
+            const result = await websim.imageGen({
+                prompt: `A cute, simple icon of ${gameState.theme}, representing the number ${value}. sticker style, on white background`,
+                transparent: false,
+                aspect: "square"
+            });
+            gameState.setImageForValue(value, result.url);
+        } catch (error) {
+            console.error(`Failed to generate image for value ${value}:`, error);
+            // Revert status if generation fails
+            gameState.setImageForValue(value, null);
+        }
+
+        boardRenderer.render();
+    }
+
+    function checkAllBlockImages() {
+        if (!gameState.theme) return;
+
+        const uniqueValues = [...new Set(gameState.boardState.filter(v => v > 0))];
+        uniqueValues.forEach(value => {
+            if (!gameState.getImageForValue(value)) {
+                generateImageForValue(value);
+            }
+        });
+    }
+
     function startGame(difficulty) {
-        const config = gameState.initializeGame(difficulty);
+        const theme = themeInput.value.trim() || null;
+        const config = gameState.initializeGame(difficulty, theme);
         hourglassManager.destroy();
 
         for (let i = 0; i < config.initialBlocks; i++) {
-            spawnRandomBlock();
+            spawnRandomBlock(); // This will also trigger image checks
         }
 
         titleScreen.classList.remove('active');

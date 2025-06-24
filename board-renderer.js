@@ -41,7 +41,19 @@ export class BoardRenderer {
         const block = document.createElement('div');
         const value = this.gameState.getBlockValue(index);
         block.classList.add('block', `block-${value}`);
-        block.textContent = value;
+        
+        const imageUrl = this.gameState.getImageForValue(value);
+
+        if (this.gameState.theme && imageUrl) {
+            if (imageUrl === 'loading') {
+                block.textContent = '...';
+                block.classList.add('loading');
+            } else {
+                block.innerHTML = `<img src="${imageUrl}" alt="${this.gameState.theme} ${value}">`;
+            }
+        } else {
+            block.textContent = value;
+        }
 
         this.positionBlock(block, index, cellSize, gap);
         this.addBlockInteractions(block, index);

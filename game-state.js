@@ -17,10 +17,14 @@ export class GameState {
         this.score = 0;
         this.selectedBlockIndex = -1;
         this.currentDifficulty = 'easy';
+        this.theme = null;
+        this.blockImages = {};
     }
     
-    initializeGame(difficulty) {
+    initializeGame(difficulty, theme) {
         this.currentDifficulty = difficulty;
+        this.theme = theme;
+        this.blockImages = {};
         const config = this.GAME_CONFIG[difficulty];
         this.gridSize = config.gridSize;
         this.score = 0;
@@ -111,5 +115,13 @@ export class GameState {
     
     getSelectedBlockIndex() {
         return this.selectedBlockIndex;
+    }
+
+    getImageForValue(value) {
+        return this.blockImages[value];
+    }
+
+    setImageForValue(value, url) {
+        this.blockImages[value] = url;
     }
 }
