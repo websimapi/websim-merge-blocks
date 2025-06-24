@@ -333,6 +333,21 @@ document.addEventListener('DOMContentLoaded', () => {
             Matter.World.add(world, grain);
         }
 
+        // Add gentle shaking to prevent particles from getting stuck
+        const shakeInterval = setInterval(() => {
+            if (!hourglassEngine || !sandGrains.length) {
+                clearInterval(shakeInterval);
+                return;
+            }
+            
+            // Apply small random forces to sand grains to simulate gentle shaking
+            sandGrains.forEach(grain => {
+                const shakeForceX = (Math.random() - 0.5) * 0.0008;
+                const shakeForceY = (Math.random() - 0.5) * 0.0004;
+                Matter.Body.applyForce(grain, grain.position, { x: shakeForceX, y: shakeForceY });
+            });
+        }, 200); // Apply shake every 200ms
+
         // Start the physics engine
         Matter.Engine.run(engine);
         Matter.Render.run(render);
