@@ -64,7 +64,7 @@ header.in-game {
 }
 
 #hourglass-flipper.flipped {
-    transform: rotateZ(180deg);
+    transform: rotateY(180deg);
 }
 
 #hourglass-svg {
@@ -73,12 +73,15 @@ header.in-game {
 
 .sand-particle {
     fill: #f5b179; /* Sandy color */
-    animation-name: fall;
-    animation-timing-function: linear;
-    animation-iteration-count: 1; /* Was infinite, changed to 1 */
-    animation-fill-mode: forwards;
     transform-origin: center;
     opacity: 1; /* Make particles visible by default */
+}
+
+.sand-particle.falling {
+    animation-name: fall;
+    animation-timing-function: linear;
+    animation-iteration-count: 1;
+    animation-fill-mode: forwards;
 }
 
 @keyframes fall {
