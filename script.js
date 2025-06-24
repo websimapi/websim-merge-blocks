@@ -132,6 +132,28 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBoard();
     };
 
+    const handleEmptyCellClick = (clickedIndex) => {
+        if (selectedBlockIndex === -1) {
+            // Nothing is selected, so clicking an empty cell does nothing.
+            return;
+        }
+
+        // A block is selected, and an empty cell is clicked.
+        // Check if it's a valid move target.
+        const isNeighbor = areNeighbors(selectedBlockIndex, clickedIndex);
+
+        if (isNeighbor) {
+            // It's a neighbor, so move the block.
+            boardState[clickedIndex] = boardState[selectedBlockIndex];
+            boardState[selectedBlockIndex] = 0;
+            selectedBlockIndex = -1; // Deselect after moving.
+            renderBoard();
+        } else {
+            // It's not a neighbor. Deselect the block as per instructions.
+            deselectBlock();
+        }
+    };
+
     const deselectBlock = () => {
         if (selectedBlockIndex !== -1) {
             selectedBlockIndex = -1;
@@ -156,6 +178,12 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < gridSize * gridSize; i++) {
             const cell = document.createElement('div');
             cell.classList.add('grid-cell');
+            
+            // Add click listener to the background cell for moves
+            cell.addEventListener('click', () => {
+                handleEmptyCellClick(i);
+            });
+
             gameBoard.appendChild(cell);
 
             if (boardState[i] !== 0) {
@@ -247,9 +275,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     backButton.addEventListener('click', showTitleScreen);
 
-    // If the user clicks on an empty cell (via the game board) or outside the game board area, deselect the block.
-    // Clicks on blocks themselves are stopped from propagating, so they won't trigger this.
-    gameBoard.addEventListener('click', deselectBlock);
+    // If the user clicks outside the game board area, deselect the block.
+    // Clicks on blocks or empty cells are handled by their own listeners.
     gameOverlay.addEventListener('click', deselectBlock);
     document.addEventListener('click', (event) => {
         // This handles clicks completely outside the game-screen (e.g., on the header)
