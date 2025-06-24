@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameOverlay = document.getElementById('game-overlay');
     const header = document.querySelector('header');
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+    const homeBtn = document.getElementById('home-btn');
 
     // Game modules
     const gameState = new GameState();
@@ -145,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         header.classList.remove('in-game');
         gameBoard.innerHTML = '';
         hourglassManager.destroy();
-        gameState.deselectBlock();
+        gameState.reset();
     }
 
     // Event listeners
@@ -153,6 +154,12 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click', () => {
             startGame(button.dataset.difficulty);
         });
+    });
+
+    homeBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to quit and return to the main menu? Your score will be lost.')) {
+            showTitleScreen();
+        }
     });
 
     gameOverlay.addEventListener('click', () => {
