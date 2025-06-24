@@ -99,13 +99,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             } else {
                 console.log("Game Over - No empty cells to spawn a new block.");
-                // Handle game over for other modes (could add game over screen later)
+                gameOver();
                 return;
             }
         }
         const randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
         boardState[randomIndex] = getNewBlockValue(); 
         renderBoard(); // Render after spawning to show the new block
+    };
+
+    const gameOver = () => {
+        // Stop the hourglass
+        destroyHourglass();
+        
+        // Clear any existing spawn interval
+        if (spawnInterval) {
+            clearInterval(spawnInterval);
+        }
+        
+        // Show game over message
+        alert(`Game Over! Final Score: ${score}`);
+        
+        // Return to title screen
+        showTitleScreen();
     };
 
     const handleBlockClick = (clickedIndex) => {
@@ -174,8 +190,16 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (selectedBlockIndex === -1) {
             // No block is selected, so spawn a new block in this empty cell
+            // But first check if there are any empty cells left after this spawn
             boardState[clickedIndex] = getNewBlockValue();
             renderBoard();
+            
+            // Check if this was the last empty cell for non-Zen modes
+            const emptyCells = getEmptyCells();
+            if (emptyCells.length === 0 && currentDifficulty !== 'zen') {
+                console.log("Game Over - Grid is now full after manual spawn.");
+                setTimeout(() => gameOver(), 100); // Small delay to show the final block
+            }
             return;
         }
 
