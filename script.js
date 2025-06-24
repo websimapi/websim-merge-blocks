@@ -9,9 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
 
     const GAME_CONFIG = {
-        easy: { gridSize: 4, initialBlocks: 2 },
-        medium: { gridSize: 5, initialBlocks: 5 },
-        hard: { gridSize: 6, initialBlocks: 6 }, // Reduced from 8 to 6
+        easy: { gridSize: 4, initialBlocks: 2, spawnRate: 15000 },
+        medium: { gridSize: 5, initialBlocks: 5, spawnRate: 12000 },
+        hard: { gridSize: 6, initialBlocks: 6, spawnRate: 8000 },
     };
 
     let gridSize = 0;
@@ -141,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         header.classList.add('in-game');
         
         // Start spawning blocks periodically
-        spawnInterval = setInterval(spawnRandomBlock, 3000); // Spawn a new block every 3 seconds
+        spawnInterval = setInterval(spawnRandomBlock, config.spawnRate); // Spawn a new block based on difficulty
 
         // Delay rendering to allow screen transition and correct board size calculation
         requestAnimationFrame(() => {
