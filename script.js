@@ -230,6 +230,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const engine = Matter.Engine.create();
         const world = engine.world;
         
+        // Reduce gravity for slower sand flow
+        engine.world.gravity.y = 0.5;
+        
         // Set up canvas dimensions
         canvas.width = 120;
         canvas.height = 200;
@@ -294,12 +297,12 @@ document.addEventListener('DOMContentLoaded', () => {
             render: { fillStyle: '#8B4513' }
         });
         
-        // Small opening at center - tiny walls to create narrow passage
-        const centerLeftWall = Matter.Bodies.rectangle(55, centerY, wallThickness, 8, { 
+        // Small opening at center - make hole larger and walls longer
+        const centerLeftWall = Matter.Bodies.rectangle(52, centerY, wallThickness, 16, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' }
         });
-        const centerRightWall = Matter.Bodies.rectangle(65, centerY, wallThickness, 8, { 
+        const centerRightWall = Matter.Bodies.rectangle(68, centerY, wallThickness, 16, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' }
         });
