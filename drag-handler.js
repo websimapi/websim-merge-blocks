@@ -37,6 +37,10 @@ export class DragHandler {
     
     getIndexFromPosition(x, y) {
         const boardRect = this.gameBoard.getBoundingClientRect();
+        if (x < boardRect.left || x > boardRect.right || y < boardRect.top || y > boardRect.bottom) {
+            return -1;
+        }
+
         const relativeX = x - boardRect.left;
         const relativeY = y - boardRect.top;
         
@@ -151,11 +155,6 @@ export class DragHandler {
         const startValue = this.gameState.getBlockValue(startIndex);
         const endValue = this.gameState.getBlockValue(endIndex);
         const isNeighbor = this.gameState.areNeighbors(startIndex, endIndex);
-
-        // Prevent dropping on a cell that is about to spawn a block
-        if (this.gameState.isUpcomingSpawn(endIndex)) {
-            return;
-        }
         
         if (endValue === 0) {
             // Moving to empty cell

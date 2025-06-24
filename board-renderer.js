@@ -3,6 +3,7 @@ export class BoardRenderer {
     constructor(gameState, gameBoard, dragHandler, onBlockClick, onEmptyCellClick) {
         this.gameState = gameState;
         this.gameBoard = gameBoard;
+        this.gameOverlay = document.getElementById('game-overlay');
         this.dragHandler = dragHandler;
         this.onBlockClick = onBlockClick;
         this.onEmptyCellClick = onEmptyCellClick;
@@ -21,9 +22,7 @@ export class BoardRenderer {
 
         for (let i = 0; i < this.gameState.gridSize * this.gameState.gridSize; i++) {
             this.createGridCell(i);
-        }
-        
-        for (let i = 0; i < this.gameState.gridSize * this.gameState.gridSize; i++) {
+            
             if (this.gameState.getBlockValue(i) !== 0) {
                 this.createBlock(i, cellSize, gap);
             }
@@ -33,11 +32,6 @@ export class BoardRenderer {
     createGridCell(index) {
         const cell = document.createElement('div');
         cell.classList.add('grid-cell');
-        
-        if (this.gameState.isUpcomingSpawn(index)) {
-            cell.classList.add('spawning');
-        }
-
         cell.addEventListener('click', () => {
             this.onEmptyCellClick(index);
         });
@@ -70,19 +64,17 @@ export class BoardRenderer {
             block.classList.add('selected');
         }
 
-        document.getElementById('game-board-wrapper').appendChild(block);
+        this.gameBoard.appendChild(block);
     }
     
     positionBlock(block, index, cellSize, gap) {
         const row = Math.floor(index / this.gameState.gridSize);
         const col = index % this.gameState.gridSize;
         
-        const boardPadding = parseFloat(getComputedStyle(this.gameBoard).paddingTop);
-
         block.style.width = `${cellSize}px`;
         block.style.height = `${cellSize}px`;
-        block.style.top = `${boardPadding + row * (cellSize + gap)}px`;
-        block.style.left = `${boardPadding + col * (cellSize + gap)}px`;
+        block.style.top = `${gap + row * (cellSize + gap)}px`;
+        block.style.left = `${gap + col * (cellSize + gap)}px`;
         block.style.fontSize = `${cellSize * 0.4}px`;
     }
     
@@ -160,5 +152,34 @@ export class BoardRenderer {
             document.addEventListener('touchmove', touchMove);
             document.addEventListener('touchend', touchEnd);
         });
+    }
+
+    showSpawnAnimations(spawnIndices) {
+        this.clearSpawnAnimations();
+        
+        const boardSize = this.gameBoard.clientWidth;
+        const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
+        const cellSize = (boardSize - (this.gameState.gridSize + 1) * gap) / this.gameState.gridSize;
+
+        for (const index of spawnIndices) {
+            const indicator = document.createElement('div');
+            indicator.classList.add('spawn-indicator');
+
+            const row = Math.floor(index / this.gameState.gridSize);
+            const col = index % this.gameState.gridSize;
+
+            indicator.style.width = `${cellSize}px`;
+            indicator.style.height = `${cellSize}px`;
+            indicator.style.top = `${gap + row * (cellSize + gap)}px`;
+            indicator.style.left = `${gap + col * (cellSize + gap)}px`;
+
+            this.gameOverlay.appendChild(indicator);
+        }
+    }
+
+    clearSpawnAnimations() {
+        if (this.gameOverlay) {
+            this.gameOverlay.innerHTML = '';
+        }
     }
 }

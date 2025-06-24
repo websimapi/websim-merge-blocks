@@ -41,31 +41,13 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.render();
         checkAllBlockImages();
         combinationsDisplay.update();
+        prepareNextSpawn();
     };
 
-    function executeTurn() {
-        // 1. Spawn blocks in the pre-determined locations
-        const upcomingSpawns = gameState.getUpcomingSpawns();
-        upcomingSpawns.forEach(boardIndex => {
-            gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
-        });
-        gameState.clearUpcomingSpawns();
-
-        // 2. Render board, check images, update combinations
-        boardRenderer.render();
-        checkAllBlockImages();
-        combinationsDisplay.update();
-
-        // 3. Prepare for the next turn
-        prepareNextSpawn();
-        
-        // 4. Reset hourglass
-        if (gameState.currentDifficulty !== 'zen') {
-             hourglassManager.reset();
-        }
-    }
-
     function prepareNextSpawn() {
+        boardRenderer.clearSpawnAnimations();
+        gameState.upcomingSpawns = [];
+        
         let numToSpawn = 1;
         const difficulty = gameState.currentDifficulty;
 
@@ -79,32 +61,42 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        // Find empty cells that are not already marked for a future spawn
-        const availableCells = gameState.getEmptyCellsForSpawning();
+        const emptyCells = gameState.getEmptyCells();
+        const availableSlots = emptyCells.length;
+        const actualNumToSpawn = Math.min(numToSpawn, availableSlots);
+
+        if (actualNumToSpawn === 0 && difficulty !== 'zen') {
+            console.log("Game Over - No empty cells for next spawn.");
+            gameOver();
+            return;
+        }
+
+        for (let i = 0; i < actualNumToSpawn; i++) {
+            const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
+            const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
+            gameState.upcomingSpawns.push(boardIndex);
+        }
         
-        if (availableCells.length < numToSpawn) {
-            if (difficulty === 'zen') {
-                console.log("Grid full in Zen mode - continuing without spawning");
-                gameState.setUpcomingSpawns([]);
-                boardRenderer.render();
-                hourglassManager.reset();
-                return;
-            } else {
-                console.log("Game Over - Not enough empty cells for the next spawn.");
-                gameOver();
-                return;
-            }
+        boardRenderer.showSpawnAnimations(gameState.upcomingSpawns);
+    }
+
+    function executeSpawn() {
+        if (gameState.upcomingSpawns.length === 0 && gameState.currentDifficulty !== 'zen' && gameState.getEmptyCells().length === 0) {
+             gameOver();
+             return;
         }
 
-        const spawnIndices = [];
-        for (let i = 0; i < numToSpawn; i++) {
-            const randomEmptyCellIndex = Math.floor(Math.random() * availableCells.length);
-            const boardIndex = availableCells.splice(randomEmptyCellIndex, 1)[0];
-            spawnIndices.push(boardIndex);
+        for (const boardIndex of gameState.upcomingSpawns) {
+            gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
         }
+        
+        boardRenderer.render();
+        checkAllBlockImages();
+        combinationsDisplay.update();
 
-        gameState.setUpcomingSpawns(spawnIndices);
-        boardRenderer.render(); // Re-render to show spawn animations
+        prepareNextSpawn();
+
+        hourglassManager.reset();
     }
 
     function gameOver() {
@@ -134,19 +126,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const clickedValue = gameState.getBlockValue(clickedIndex);
         const sameValue = selectedValue === clickedValue;
         const sumValue = selectedValue + clickedValue;
-
+        
+        let moveMade = false;
         if (isNeighbor && sameValue) {
             const mergedValue = gameState.getBlockValue(clickedIndex) + 1;
             gameState.placeBlock(clickedIndex, mergedValue);
             gameState.removeBlock(selectedIndex);
             gameState.updateScore(mergedValue);
             gameState.deselectBlock();
+            moveMade = true;
         } else if (isNeighbor && sumValue % 2 === 0) {
             const halfValue = sumValue / 2;
             gameState.placeBlock(selectedIndex, halfValue);
             gameState.placeBlock(clickedIndex, halfValue);
             gameState.updateScore(halfValue * 2);
             gameState.deselectBlock();
+            moveMade = true;
         } else {
             gameState.selectBlock(clickedIndex);
         }
@@ -154,33 +149,41 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.render();
         checkAllBlockImages();
         combinationsDisplay.update();
+        if(moveMade) {
+            prepareNextSpawn();
+        }
     }
 
     function handleEmptyCellClick(clickedIndex) {
         if (dragHandler.isDragging) return;
         
+        let moveMade = false;
         if (!gameState.hasSelectedBlock()) {
-            gameState.placeBlock(clickedIndex, gameState.getNewBlockValue());
-            boardRenderer.render();
-            checkAllBlockImages();
-            combinationsDisplay.update();
-            prepareNextSpawn(); // A new block was placed, so we need to set up the next spawn.
+            // This behavior might be too powerful, maybe remove?
+            // gameState.placeBlock(clickedIndex, gameState.getNewBlockValue());
+            // boardRenderer.render();
+            // checkAllBlockImages();
+            // combinationsDisplay.update();
             return;
         }
 
         const selectedIndex = gameState.getSelectedBlockIndex();
         const isNeighbor = gameState.areNeighbors(selectedIndex, clickedIndex);
 
-        if (isNeighbor && !gameState.isUpcomingSpawn(clickedIndex)) {
+        if (isNeighbor) {
             gameState.placeBlock(clickedIndex, gameState.getBlockValue(selectedIndex));
             gameState.removeBlock(selectedIndex);
             gameState.deselectBlock();
-            boardRenderer.render();
-            checkAllBlockImages();
-            combinationsDisplay.update();
+            moveMade = true;
         } else {
             gameState.deselectBlock();
-            boardRenderer.render();
+        }
+        
+        boardRenderer.render();
+        if (moveMade) {
+            checkAllBlockImages();
+            combinationsDisplay.update();
+            prepareNextSpawn();
         }
     }
 
@@ -247,8 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.render();
         checkAllBlockImages();
         combinationsDisplay.update();
-        
-        // Prepare the first random spawn
         prepareNextSpawn();
 
         titleScreen.classList.remove('active');
@@ -256,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
         header.classList.add('in-game');
         
         setTimeout(() => {
-            hourglassManager.create(config.sandGrains, executeTurn);
+            hourglassManager.create(config.sandGrains, executeSpawn);
         }, 100);
 
         requestAnimationFrame(() => {
@@ -269,6 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gameScreen.classList.remove('active');
         header.classList.remove('in-game');
         gameBoard.innerHTML = '';
+        boardRenderer.clearSpawnAnimations();
         hourglassManager.destroy();
         gameState.reset();
         combinationsContainer.style.display = 'block';
