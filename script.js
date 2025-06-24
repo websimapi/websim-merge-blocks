@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameScreen = document.getElementById('game-screen');
     const gameBoard = document.getElementById('game-board');
     const backButton = document.getElementById('back-btn');
+    const scoreElement = document.getElementById('score');
+    const header = document.querySelector('header');
 
     const difficultyButtons = document.querySelectorAll('.difficulty-buttons button');
 
@@ -14,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let gridSize = 0;
     let boardState = [];
+    let score = 0;
 
     const getEmptyCells = () => {
         const emptyCells = [];
@@ -81,6 +84,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const config = GAME_CONFIG[difficulty];
         gridSize = config.gridSize;
         
+        // Reset score
+        score = 0;
+        scoreElement.textContent = score;
+
         // Initialize board state with all zeros
         boardState = new Array(gridSize * gridSize).fill(0);
         
@@ -91,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         titleScreen.classList.remove('active');
         gameScreen.classList.add('active');
+        header.classList.add('in-game');
 
         // Delay rendering to allow screen transition and correct board size calculation
         requestAnimationFrame(() => {
@@ -101,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const showTitleScreen = () => {
         titleScreen.classList.add('active');
         gameScreen.classList.remove('active');
+        header.classList.remove('in-game');
         gameBoard.innerHTML = '';
     }
 
@@ -119,4 +128,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
