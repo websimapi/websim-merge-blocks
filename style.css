@@ -71,12 +71,15 @@ h1 {
     background-color: white;
     color: var(--font-color-dark);
     border-radius: 5px;
-    transition: background-color 0.2s, color 0.2s;
+    transition: background-color 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .difficulty-buttons button:hover {
     background-color: var(--font-color-dark);
     color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0,0,0,0.15);
 }
 
 #game-screen.active {
@@ -110,6 +113,14 @@ h1 {
     border-radius: 3px;
     transition: all 0.1s ease-in-out;
     color: var(--font-color-light);
+    box-sizing: border-box;
+}
+
+.block:hover {
+    transform: scale(1.05);
+    outline-width: 4px;
+    outline-style: solid;
+    z-index: 10;
 }
 
 #back-btn {
@@ -128,13 +139,28 @@ h1 {
     color: white;
 }
 
-/* Block Colors */
+/* Block Colors & Hover Outlines */
 .block-1 { background-color: #eee4da; color: var(--font-color-dark); }
+.block-1:hover { outline-color: #e4d8c8; }
+
 .block-2 { background-color: #ede0c8; color: var(--font-color-dark); }
+.block-2:hover { outline-color: #e3d2b2; }
+
 .block-3 { background-color: #f2b179; }
+.block-3:hover { outline-color: #e8a164; }
+
 .block-4 { background-color: #f59563; }
+.block-4:hover { outline-color: #eb854c; }
+
 .block-5 { background-color: #f67c5f; }
+.block-5:hover { outline-color: #f06a4b; }
+
 .block-6 { background-color: #f65e3b; }
+.block-6:hover { outline-color: #ed4d25; }
+
 .block-7 { background-color: #edcf72; }
+.block-7:hover { outline-color: #e3c15c; }
+
 .block-8 { background-color: #edcc61; }
+.block-8:hover { outline-color: #e1be4b; }
 /* Add more as needed */

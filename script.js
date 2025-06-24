@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scoreElement = document.getElementById('score');
     const header = document.querySelector('header');
 
-    const difficultyButtons = document.querySelectorAll('.difficulty-buttons button');
+    const difficultyButtons = document.querySelectorAll('.difficulty-btn');
 
     const GAME_CONFIG = {
         easy: { gridSize: 4, initialBlocks: 2 },
