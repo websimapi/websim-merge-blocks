@@ -32,6 +32,36 @@ export class BoardRenderer {
         });
     }
     
+    renderBlocks() {
+        // Remove only existing blocks
+        this.gameBoard.querySelectorAll('.block').forEach(el => el.remove());
+
+        const boardSize = this.gameBoard.clientWidth;
+        const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
+        const cellSize = (boardSize - (this.gameState.gridSize + 1) * gap) / this.gameState.gridSize;
+
+        // Re-create blocks
+        for (let i = 0; i < this.gameState.gridSize * this.gameState.gridSize; i++) {
+            if (this.gameState.getBlockValue(i) !== 0) {
+                this.createBlock(i, cellSize, gap);
+            }
+        }
+    }
+
+    renderIndicators() {
+        // Remove only existing indicators
+        this.gameBoard.querySelectorAll('.spawn-indicator').forEach(el => el.remove());
+        
+        const boardSize = this.gameBoard.clientWidth;
+        const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
+        const cellSize = (boardSize - (this.gameState.gridSize + 1) * gap) / this.gameState.gridSize;
+
+        // Re-create indicators
+        this.gameState.nextSpawnIndices.forEach(index => {
+            this.createSpawnIndicator(index, cellSize, gap);
+        });
+    }
+    
     createGridCell(index) {
         const cell = document.createElement('div');
         cell.classList.add('grid-cell');

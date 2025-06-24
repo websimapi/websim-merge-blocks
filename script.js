@@ -38,10 +38,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Set up drag completion callback
     dragHandler.onDragComplete = (boardChanged) => {
-        boardRenderer.render();
         if (boardChanged) {
+            boardRenderer.renderBlocks();
             checkAllBlockImages();
             combinationsDisplay.update();
+        } else {
+            // Re-render to clear selection state if drag was invalid
+            boardRenderer.renderBlocks();
         }
     };
 
@@ -72,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameState.nextSpawnIndices.push(boardIndex);
         }
 
-        boardRenderer.render();
+        boardRenderer.renderIndicators();
     }
 
     function spawnRandomBlock() {
@@ -114,13 +117,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!gameState.hasSelectedBlock()) {
             gameState.selectBlock(clickedIndex);
-            boardRenderer.render();
+            boardRenderer.renderBlocks();
             return;
         }
 
         if (gameState.getSelectedBlockIndex() === clickedIndex) {
             gameState.deselectBlock();
-            boardRenderer.render();
+            boardRenderer.renderBlocks();
             return;
         }
 
@@ -150,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameState.selectBlock(clickedIndex);
         }
 
-        boardRenderer.render();
+        boardRenderer.renderBlocks();
         if (boardChanged) {
             checkAllBlockImages();
             combinationsDisplay.update();
@@ -163,8 +166,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let boardChanged = false;
 
         if (!gameState.hasSelectedBlock()) {
-            gameState.placeBlock(clickedIndex, gameState.getNewBlockValue());
-            boardChanged = true;
+            // This action is disabled for now to prevent accidental empty cell clicks
+            // gameState.placeBlock(clickedIndex, gameState.getNewBlockValue());
+            // boardChanged = true;
         } else {
             const selectedIndex = gameState.getSelectedBlockIndex();
             const isNeighbor = gameState.areNeighbors(selectedIndex, clickedIndex);
@@ -179,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        boardRenderer.render();
+        boardRenderer.renderBlocks();
 
         if (boardChanged) {
             checkAllBlockImages();
@@ -194,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Set status to loading to prevent multiple requests
         gameState.setImageForValue(value, 'loading');
-        boardRenderer.render(); // Show loading indicator
+        boardRenderer.renderBlocks(); // Show loading indicator
 
         try {
             const descriptor = levelDescriptors[value - 1] || `an evolved`;
@@ -210,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameState.setImageForValue(value, null);
         }
 
-        boardRenderer.render();
+        boardRenderer.renderBlocks();
         combinationsDisplay.update();
     }
 
@@ -301,13 +305,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     gameOverlay.addEventListener('click', () => {
         gameState.deselectBlock();
-        boardRenderer.render();
+        boardRenderer.renderBlocks();
     });
     
     document.addEventListener('click', (event) => {
-        if (gameScreen.classList.contains('active') && !gameScreen.contains(event.target)) {
+        if (gameScreen.classList.contains('active') && !gameBoard.contains(event.target) && !combinationsContainer.contains(event.target)) {
             gameState.deselectBlock();
-            boardRenderer.render();
+            boardRenderer.renderBlocks();
         }
     });
 
