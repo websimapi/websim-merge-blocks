@@ -65,7 +65,12 @@ export class BoardRenderer {
     createGridCell(index) {
         const cell = document.createElement('div');
         cell.classList.add('grid-cell');
-        cell.addEventListener('click', () => {
+        cell.addEventListener('click', (e) => {
+            // Prevent clicks from propagating to the overlay if this cell has an indicator
+            const isIndicatorCell = this.gameState.nextSpawnIndices.includes(index);
+            if(isIndicatorCell && this.gameState.currentDifficulty === 'easy'){
+                e.stopPropagation();
+            }
             this.onEmptyCellClick(index);
         });
         this.gameBoard.appendChild(cell);

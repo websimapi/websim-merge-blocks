@@ -36,6 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
         handleEmptyCellClick
     );
 
+    dragHandler.onIndicatorDrop = (index) => {
+        spawnEarly(index);
+    };
+
     // Set up drag completion callback
     dragHandler.onDragComplete = (boardChanged) => {
         if (boardChanged) {
@@ -69,10 +73,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const actualNumToSpawn = Math.min(numToSpawn, availableSlots);
 
-        for (let i = 0; i < actualNumToSpawn; i++) {
-            const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
-            const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
-            gameState.nextSpawnIndices.push(boardIndex);
+        if (actualNumToSpawn === 0 && availableSlots > 0 && gameState.nextSpawnIndices.length === 0) {
+             // Edge case: if we can't spawn the desired number, but there's space,
+             // and no spawns are queued, queue at least one.
+             const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
+             const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
+             gameState.nextSpawnIndices.push(boardIndex);
+        } else {
+            for (let i = 0; i < actualNumToSpawn; i++) {
+                const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
+                const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
+                gameState.nextSpawnIndices.push(boardIndex);
+            }
         }
 
         boardRenderer.renderIndicators();
@@ -95,7 +107,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Spawn the blocks
         spawnIndices.forEach(boardIndex => {
-            gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
+            // Only spawn if the index is still in the queue (wasn't spawned early)
+            if (gameState.nextSpawnIndices.includes(boardIndex)) {
+                gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
+            }
         });
         
         gameState.nextSpawnIndices = [];
@@ -162,6 +177,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleEmptyCellClick(clickedIndex) {
         if (dragHandler.isDragging) return;
+
+        const isIndicatorCell = gameState.nextSpawnIndices.includes(clickedIndex);
+        if (isIndicatorCell) {
+            if (gameState.currentDifficulty === 'easy') {
+                spawnEarly(clickedIndex);
+            }
+            // On other difficulties, or if it's an indicator, we do nothing else.
+            return;
+        }
         
         let boardChanged = false;
 
@@ -188,6 +212,26 @@ document.addEventListener('DOMContentLoaded', () => {
             checkAllBlockImages();
             combinationsDisplay.update();
         }
+    }
+
+    function spawnEarly(index) {
+        if (gameState.currentDifficulty !== 'easy' || !gameState.nextSpawnIndices.includes(index)) {
+            return;
+        }
+
+        // Place the new block
+        gameState.placeBlock(index, gameState.getNewBlockValue());
+
+        // Remove from the spawn queue
+        const queueIndex = gameState.nextSpawnIndices.indexOf(index);
+        if (queueIndex > -1) {
+            gameState.nextSpawnIndices.splice(queueIndex, 1);
+        }
+
+        // Re-render the board to show the new block and remove the indicator
+        boardRenderer.render();
+        checkAllBlockImages();
+        combinationsDisplay.update();
     }
 
     async function generateImageForValue(value) {

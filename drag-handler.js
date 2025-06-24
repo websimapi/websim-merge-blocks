@@ -133,8 +133,18 @@ export class DragHandler {
         this.removeDragLine();
         
         let boardChanged = false;
+
+        const isTargetingIndicator = this.dragEndIndex !== -1 && this.gameState.nextSpawnIndices.includes(this.dragEndIndex);
+
         if (this.dragEndIndex !== -1 && this.dragEndIndex !== this.dragStartIndex) {
-            boardChanged = this.processDragAction(this.dragStartIndex, this.dragEndIndex);
+             if (isTargetingIndicator && this.gameState.currentDifficulty === 'easy') {
+                if (this.onIndicatorDrop) {
+                    this.onIndicatorDrop(this.dragEndIndex);
+                }
+                // The drop action itself doesn't change the board (the spawn does), so boardChanged remains false.
+            } else {
+                boardChanged = this.processDragAction(this.dragStartIndex, this.dragEndIndex);
+            }
         }
         
         this.isDragging = false;
@@ -153,6 +163,11 @@ export class DragHandler {
         const endValue = this.gameState.getBlockValue(endIndex);
         const isNeighbor = this.gameState.areNeighbors(startIndex, endIndex);
         let boardChanged = false;
+
+        const isTargetingIndicator = this.gameState.nextSpawnIndices.includes(endIndex);
+        if (isTargetingIndicator && this.gameState.currentDifficulty !== 'easy') {
+            return false; // Disallow interaction with indicators on non-easy modes.
+        }
         
         if (endValue === 0) {
             // Moving to empty cell
