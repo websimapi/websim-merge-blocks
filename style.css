@@ -30,7 +30,7 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
+    padding-bottom: 20px;
     visibility: hidden;
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
@@ -48,6 +48,10 @@ header.in-game {
     color: var(--font-color-light);
     padding: 5px 15px;
     border-radius: 5px;
+}
+
+#game-controls {
+    padding: 0;
 }
 
 .screen {

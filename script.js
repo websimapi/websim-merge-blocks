@@ -147,7 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
         gameBoard.innerHTML = '';
         hourglassManager.destroy();
         gameState.deselectBlock();
-        gameState.reset();
     }
 
     // Event listeners
@@ -157,9 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     
-    backButton.addEventListener('click', () => {
-        showTitleScreen();
-    });
+    backButton.addEventListener('click', showTitleScreen);
 
     gameOverlay.addEventListener('click', () => {
         gameState.deselectBlock();
