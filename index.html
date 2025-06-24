@@ -12,6 +12,23 @@
             <div id="score-container">
                 Score: <span id="score">0</span>
             </div>
+            <div id="hourglass-container">
+                <svg id="hourglass-svg" width="60" height="80" viewBox="0 0 60 80">
+                    <defs>
+                        <clipPath id="hourglass-clip">
+                            <!-- This path defines the interior shape where sand is visible -->
+                            <path d="M 10 10 Q 30 10 50 10 L 32 40 L 50 70 Q 30 70 10 70 L 28 40 Z" />
+                        </clipPath>
+                    </defs>
+                    <!-- Glass Outline -->
+                    <path d="M 5 5 Q 30 5 55 5 L 55 10 Q 30 10 5 10 Z" fill="#c0c0c0" />
+                    <path d="M 5 75 Q 30 75 55 75 L 55 70 Q 30 70 5 70 Z" fill="#c0c0c0" />
+                    <path d="M 10 10 Q 30 10 50 10 L 32 40 L 50 70 Q 30 70 10 70 L 28 40 Z" stroke="#776e65" stroke-width="3" fill="rgba(204, 192, 179, 0.5)"/>
+
+                    <!-- Sand Container -->
+                    <g id="sand-container" clip-path="url(#hourglass-clip)"></g>
+                </svg>
+            </div>
             <div id="game-controls">
                  <button id="back-btn">Back to Menu</button>
             </div>
@@ -33,4 +50,3 @@
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
-

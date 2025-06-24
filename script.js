@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const backButton = document.getElementById('back-btn');
     const scoreElement = document.getElementById('score');
     const header = document.querySelector('header');
+    const sandContainer = document.getElementById('sand-container');
 
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
 
@@ -20,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let score = 0;
     let spawnInterval = null;
     let selectedBlockIndex = -1;
+    let hourglassAnimationId = 0;
 
     const getNewBlockValue = () => {
         // This function determines the value of a new block based on the score.
@@ -83,11 +85,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const emptyCells = getEmptyCells();
         if (emptyCells.length === 0) {
             console.log("No empty cells to spawn a new block.");
+            // Potentially end game here in the future
             return;
         }
         const randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
         boardState[randomIndex] = getNewBlockValue(); 
         renderBoard(); // Render after spawning to show the new block
+        
+        // When a block spawns, reset the hourglass animation
+        const spawnRate = GAME_CONFIG[currentDifficulty].spawnRate;
+        startHourglassAnimation(spawnRate);
     };
 
     const handleBlockClick = (clickedIndex) => {
@@ -219,7 +226,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    let currentDifficulty = 'easy'; // Keep track of current difficulty
+
+    const startHourglassAnimation = (durationMs) => {
+        // Clear any previous animation
+        sandContainer.innerHTML = '';
+        cancelAnimationFrame(hourglassAnimationId);
+    
+        const numParticles = 100;
+        const durationSec = durationMs / 1000;
+        const startTime = performance.now();
+    
+        const createParticle = (delay) => {
+            const particle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            const initialX = 30 + (Math.random() - 0.5) * 15; // Random start X near the neck
+            const initialY = 15 + Math.random() * 10;      // Random start Y in top bulb
+            
+            particle.setAttribute('cx', initialX);
+            particle.setAttribute('cy', initialY);
+            particle.setAttribute('r', 1.5 + Math.random());
+            particle.classList.add('sand-particle');
+            
+            particle.style.animationDuration = `${durationSec * 0.9}s`; // Sand should finish a bit before next spawn
+            particle.style.animationDelay = `${delay}s`;
+            
+            sandContainer.appendChild(particle);
+        };
+        
+        const spawnParticles = () => {
+             const elapsed = (performance.now() - startTime) / 1000;
+             const spawnWindow = durationSec * 0.8; // Spawn particles over 80% of the duration
+
+             if(elapsed < spawnWindow) {
+                 // Create a particle for this frame
+                 createParticle(0); // Delay is handled by CSS now, we just add them over time
+                 hourglassAnimationId = requestAnimationFrame(spawnParticles);
+             }
+        };
+
+        // Instead of spawning over time with JS, let's use CSS animation delays for simplicity and performance.
+        for (let i = 0; i < numParticles; i++) {
+            const delay = Math.random() * (durationSec * 0.8); // Stagger their start time
+            createParticle(delay);
+        }
+    };
+
     const startGame = (difficulty) => {
+        currentDifficulty = difficulty; // Store difficulty
         const config = GAME_CONFIG[difficulty];
         gridSize = config.gridSize;
         
@@ -246,7 +299,8 @@ document.addEventListener('DOMContentLoaded', () => {
         header.classList.add('in-game');
         
         // Start spawning blocks periodically
-        spawnInterval = setInterval(spawnRandomBlock, config.spawnRate); // Spawn a new block based on difficulty
+        spawnInterval = setInterval(spawnRandomBlock, config.spawnRate);
+        startHourglassAnimation(config.spawnRate);
 
         // Delay rendering to allow screen transition and correct board size calculation
         requestAnimationFrame(() => {
@@ -264,6 +318,8 @@ document.addEventListener('DOMContentLoaded', () => {
             clearInterval(spawnInterval);
             spawnInterval = null;
         }
+        sandContainer.innerHTML = ''; // Clear sand
+        cancelAnimationFrame(hourglassAnimationId); // Stop animation loop
         selectedBlockIndex = -1; // Reset selection
     }
 

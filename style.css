@@ -34,6 +34,7 @@ header {
     visibility: hidden;
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
+    margin-bottom: 10px; /* Add some space below header */
 }
 
 header.in-game {
@@ -48,6 +49,40 @@ header.in-game {
     color: var(--font-color-light);
     padding: 5px 15px;
     border-radius: 5px;
+}
+
+#hourglass-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#hourglass-svg {
+    transform: translateY(5px); /* Align better with score */
+}
+
+.sand-particle {
+    fill: #f5b179; /* Sandy color */
+    animation-name: fall;
+    animation-timing-function: linear;
+    animation-iteration-count: 1; /* Was infinite, changed to 1 */
+    animation-fill-mode: forwards;
+    transform-origin: center;
+    opacity: 0;
+}
+
+@keyframes fall {
+    0% {
+        transform: translateY(0px);
+        opacity: 1;
+    }
+    99% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(60px); /* Fall distance */
+        opacity: 0;
+    }
 }
 
 .screen {
@@ -140,7 +175,6 @@ h1 {
 }
 
 #back-btn {
-    margin-top: 20px;
     font-size: 1rem;
     padding: 8px 16px;
     cursor: pointer;
