@@ -45,7 +45,12 @@ export class CombinationsDisplay {
                 li.appendChild(resultContainer);
             }
             
-            li.addEventListener('click', () => this.findAndHighlightCombination(combo));
+            if (this.gameState.currentDifficulty === 'medium') {
+                li.classList.add('no-hint');
+            } else {
+                li.addEventListener('click', () => this.findAndHighlightCombination(combo));
+            }
+
             this.combinationsList.appendChild(li);
         });
     }

@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const header = document.querySelector('header');
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
     const themeInput = document.getElementById('theme-input');
+    const combinationsContainer = document.getElementById('combinations-container');
 
     const levelDescriptors = [
         "a basic", "an improved", "an advanced", "a superior", "a masterful", 
@@ -211,6 +212,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const config = gameState.initializeGame(difficulty, theme);
         hourglassManager.destroy();
 
+        if (difficulty === 'hard') {
+            combinationsContainer.style.display = 'none';
+        } else {
+            combinationsContainer.style.display = 'block';
+        }
+
         // Spawn initial blocks without generating images for them yet
         for (let i = 0; i < config.initialBlocks; i++) {
              const emptyCells = gameState.getEmptyCells();
@@ -246,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gameBoard.innerHTML = '';
         hourglassManager.destroy();
         gameState.reset();
+        combinationsContainer.style.display = 'block';
     }
 
     // Event listeners
