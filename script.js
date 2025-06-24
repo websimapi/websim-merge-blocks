@@ -258,53 +258,73 @@ document.addEventListener('DOMContentLoaded', () => {
         // Outer walls
         const topWall = Matter.Bodies.rectangle(centerX, 10, 100, wallThickness, { 
             isStatic: true, 
-            render: { fillStyle: '#8B4513' }
+            render: { fillStyle: '#8B4513' },
+            friction: 0.1,
+            frictionStatic: 0.1
         });
         const bottomWall = Matter.Bodies.rectangle(centerX, 190, 100, wallThickness, { 
             isStatic: true, 
-            render: { fillStyle: '#8B4513' }
+            render: { fillStyle: '#8B4513' },
+            friction: 0.1,
+            frictionStatic: 0.1
         });
         const leftWall = Matter.Bodies.rectangle(10, centerY, wallThickness, 200, { 
             isStatic: true, 
-            render: { fillStyle: '#8B4513' }
+            render: { fillStyle: '#8B4513' },
+            friction: 0.1,
+            frictionStatic: 0.1
         });
         const rightWall = Matter.Bodies.rectangle(110, centerY, wallThickness, 200, { 
             isStatic: true, 
-            render: { fillStyle: '#8B4513' }
+            render: { fillStyle: '#8B4513' },
+            friction: 0.1,
+            frictionStatic: 0.1
         });
         
         // Top funnel - angled walls that narrow toward center
         const topFunnelLeft = Matter.Bodies.rectangle(30, 75, 60, wallThickness, { 
             isStatic: true, 
             angle: Math.PI / 6, // 30 degrees
-            render: { fillStyle: '#8B4513' }
+            render: { fillStyle: '#8B4513' },
+            friction: 0.1,
+            frictionStatic: 0.1
         });
         const topFunnelRight = Matter.Bodies.rectangle(90, 75, 60, wallThickness, { 
             isStatic: true, 
             angle: -Math.PI / 6, // -30 degrees
-            render: { fillStyle: '#8B4513' }
+            render: { fillStyle: '#8B4513' },
+            friction: 0.1,
+            frictionStatic: 0.1
         });
         
         // Bottom funnel - angled walls that widen from center
         const bottomFunnelLeft = Matter.Bodies.rectangle(30, 125, 60, wallThickness, { 
             isStatic: true, 
             angle: -Math.PI / 6, // -30 degrees
-            render: { fillStyle: '#8B4513' }
+            render: { fillStyle: '#8B4513' },
+            friction: 0.1,
+            frictionStatic: 0.1
         });
         const bottomFunnelRight = Matter.Bodies.rectangle(90, 125, 60, wallThickness, { 
             isStatic: true, 
             angle: Math.PI / 6, // 30 degrees
-            render: { fillStyle: '#8B4513' }
+            render: { fillStyle: '#8B4513' },
+            friction: 0.1,
+            frictionStatic: 0.1
         });
         
         // Small opening at center - make hole larger and walls longer
         const centerLeftWall = Matter.Bodies.rectangle(55, centerY, wallThickness, 24, { 
             isStatic: true, 
-            render: { fillStyle: '#8B4513' }
+            render: { fillStyle: '#8B4513' },
+            friction: 0.1,
+            frictionStatic: 0.1
         });
         const centerRightWall = Matter.Bodies.rectangle(65, centerY, wallThickness, 24, { 
             isStatic: true, 
-            render: { fillStyle: '#8B4513' }
+            render: { fillStyle: '#8B4513' },
+            friction: 0.1,
+            frictionStatic: 0.1
         });
 
         // Add walls to world
@@ -356,24 +376,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Count sand grains in bottom chamber (y > 140)
             const bottomGrains = sandGrains.filter(grain => grain.position.y > 140);
-            
-            // Apply jiggle effect to stuck grains (not in bottom chamber)
-            sandGrains.forEach(grain => {
-                // Only apply to grains not in bottom chamber
-                if (grain.position.y <= 140) {
-                    // Check if grain is moving slowly (potentially stuck)
-                    const velocity = Math.sqrt(grain.velocity.x * grain.velocity.x + grain.velocity.y * grain.velocity.y);
-                    
-                    // If velocity is very low, apply a small random impulse
-                    if (velocity < 0.5) {
-                        const jiggleForce = {
-                            x: (Math.random() - 0.5) * 0.002,
-                            y: (Math.random() - 0.5) * 0.002
-                        };
-                        Matter.Body.applyForce(grain, grain.position, jiggleForce);
-                    }
-                }
-            });
             
             // If all grains are in bottom chamber, spawn new block and reset
             if (bottomGrains.length === sandGrains.length) {
