@@ -252,76 +252,78 @@ document.addEventListener('DOMContentLoaded', () => {
         const centerX = 60;
         const centerY = 100;
         
-        // Top chamber walls
-        const topLeftWall = Matter.Bodies.rectangle(20, 60, wallThickness, 80, { 
+        // Outer walls
+        const topWall = Matter.Bodies.rectangle(centerX, 10, 100, wallThickness, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' }
         });
-        const topRightWall = Matter.Bodies.rectangle(100, 60, wallThickness, 80, { 
+        const bottomWall = Matter.Bodies.rectangle(centerX, 190, 100, wallThickness, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' }
         });
-        const topWall = Matter.Bodies.rectangle(centerX, 20, 80, wallThickness, { 
+        const leftWall = Matter.Bodies.rectangle(10, centerY, wallThickness, 200, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' }
         });
-        
-        // Bottom chamber walls
-        const bottomLeftWall = Matter.Bodies.rectangle(20, 140, wallThickness, 80, { 
-            isStatic: true, 
-            render: { fillStyle: '#8B4513' }
-        });
-        const bottomRightWall = Matter.Bodies.rectangle(100, 140, wallThickness, 80, { 
-            isStatic: true, 
-            render: { fillStyle: '#8B4513' }
-        });
-        const bottomWall = Matter.Bodies.rectangle(centerX, 180, 80, wallThickness, { 
+        const rightWall = Matter.Bodies.rectangle(110, centerY, wallThickness, 200, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' }
         });
         
-        // Funnel parts (angled walls)
-        const topFunnelLeft = Matter.Bodies.rectangle(45, 85, 30, wallThickness, { 
+        // Top funnel - angled walls that narrow toward center
+        const topFunnelLeft = Matter.Bodies.rectangle(35, 75, 60, wallThickness, { 
             isStatic: true, 
-            angle: Math.PI / 4,
+            angle: Math.PI / 6, // 30 degrees
             render: { fillStyle: '#8B4513' }
         });
-        const topFunnelRight = Matter.Bodies.rectangle(75, 85, 30, wallThickness, { 
+        const topFunnelRight = Matter.Bodies.rectangle(85, 75, 60, wallThickness, { 
             isStatic: true, 
-            angle: -Math.PI / 4,
+            angle: -Math.PI / 6, // -30 degrees
             render: { fillStyle: '#8B4513' }
         });
         
-        const bottomFunnelLeft = Matter.Bodies.rectangle(45, 115, 30, wallThickness, { 
+        // Bottom funnel - angled walls that widen from center
+        const bottomFunnelLeft = Matter.Bodies.rectangle(35, 125, 60, wallThickness, { 
             isStatic: true, 
-            angle: -Math.PI / 4,
+            angle: -Math.PI / 6, // -30 degrees
             render: { fillStyle: '#8B4513' }
         });
-        const bottomFunnelRight = Matter.Bodies.rectangle(75, 115, 30, wallThickness, { 
+        const bottomFunnelRight = Matter.Bodies.rectangle(85, 125, 60, wallThickness, { 
             isStatic: true, 
-            angle: Math.PI / 4,
+            angle: Math.PI / 6, // 30 degrees
+            render: { fillStyle: '#8B4513' }
+        });
+        
+        // Small opening at center - tiny walls to create narrow passage
+        const centerLeftWall = Matter.Bodies.rectangle(55, centerY, wallThickness, 8, { 
+            isStatic: true, 
+            render: { fillStyle: '#8B4513' }
+        });
+        const centerRightWall = Matter.Bodies.rectangle(65, centerY, wallThickness, 8, { 
+            isStatic: true, 
             render: { fillStyle: '#8B4513' }
         });
 
         // Add walls to world
         Matter.World.add(world, [
-            topLeftWall, topRightWall, topWall,
-            bottomLeftWall, bottomRightWall, bottomWall,
+            topWall, bottomWall, leftWall, rightWall,
             topFunnelLeft, topFunnelRight,
-            bottomFunnelLeft, bottomFunnelRight
+            bottomFunnelLeft, bottomFunnelRight,
+            centerLeftWall, centerRightWall
         ]);
 
         // Create sand grains
         sandGrains = [];
         for (let i = 0; i < numGrains; i++) {
             const grain = Matter.Bodies.circle(
-                30 + Math.random() * 60, 
-                30 + Math.random() * 40, 
-                2, 
+                20 + Math.random() * 80, 
+                20 + Math.random() * 60, 
+                1.5, 
                 {
                     render: { fillStyle: '#F4A460' },
-                    restitution: 0.3,
-                    friction: 0.8
+                    restitution: 0.2,
+                    friction: 0.4,
+                    frictionAir: 0.01
                 }
             );
             sandGrains.push(grain);
@@ -349,8 +351,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Count sand grains in bottom chamber (y > 120)
-            const bottomGrains = sandGrains.filter(grain => grain.position.y > 120);
+            // Count sand grains in bottom chamber (y > 140)
+            const bottomGrains = sandGrains.filter(grain => grain.position.y > 140);
             
             // If all grains are in bottom chamber, spawn new block and reset
             if (bottomGrains.length === sandGrains.length) {
@@ -373,13 +375,14 @@ document.addEventListener('DOMContentLoaded', () => {
         sandGrains = [];
         for (let i = 0; i < config.sandGrains; i++) {
             const grain = Matter.Bodies.circle(
-                30 + Math.random() * 60, 
-                30 + Math.random() * 40, 
-                2, 
+                20 + Math.random() * 80, 
+                20 + Math.random() * 60, 
+                1.5, 
                 {
                     render: { fillStyle: '#F4A460' },
-                    restitution: 0.3,
-                    friction: 0.8
+                    restitution: 0.2,
+                    friction: 0.4,
+                    frictionAir: 0.01
                 }
             );
             sandGrains.push(grain);
