@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Set gravity based on difficulty - weaker for easy mode
         if (currentDifficulty === 'easy') {
-            engine.world.gravity.y = 0.3;
+            engine.world.gravity.y = 0.15;
         } else if (currentDifficulty === 'medium') {
             engine.world.gravity.y = 0.5;
         } else { // hard mode
