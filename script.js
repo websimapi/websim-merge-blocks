@@ -9,10 +9,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const titleScreen = document.getElementById('title-screen');
     const gameScreen = document.getElementById('game-screen');
     const gameBoard = document.getElementById('game-board');
+    const homeBtn = document.getElementById('home-btn');
     const gameOverlay = document.getElementById('game-overlay');
     const header = document.querySelector('header');
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
-    const homeBtn = document.getElementById('home-btn');
 
     // Game modules
     const gameState = new GameState();

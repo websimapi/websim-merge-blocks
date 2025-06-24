@@ -126,6 +126,12 @@ h1 {
     border-radius: 6px;
 }
 
+#game-board-wrapper {
+    position: relative;
+    width: var(--board-size);
+    height: var(--board-size);
+}
+
 #game-board {
     display: grid;
     position: relative;
