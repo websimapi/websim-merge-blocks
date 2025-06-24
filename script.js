@@ -190,16 +190,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (selectedBlockIndex === -1) {
             // No block is selected, so spawn a new block in this empty cell
-            // But first check if there are any empty cells left after this spawn
             boardState[clickedIndex] = getNewBlockValue();
             renderBoard();
             
-            // Check if this was the last empty cell for non-Zen modes
-            const emptyCells = getEmptyCells();
-            if (emptyCells.length === 0 && currentDifficulty !== 'zen') {
-                console.log("Game Over - Grid is now full after manual spawn.");
-                setTimeout(() => gameOver(), 100); // Small delay to show the final block
-            }
+            // Remove the immediate game over check - let the hourglass timer handle game over detection
             return;
         }
 
