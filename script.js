@@ -53,6 +53,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const areNeighbors = (index1, index2) => {
+        const row1 = Math.floor(index1 / gridSize);
+        const col1 = index1 % gridSize;
+        const row2 = Math.floor(index2 / gridSize);
+        const col2 = index2 % gridSize;
+
+        const rowDiff = Math.abs(row1 - row2);
+        const colDiff = Math.abs(col1 - col2);
+
+        // They are neighbors if they are adjacent, including diagonals.
+        // This means both row and column difference must be 1 or less,
+        // but they can't be the same cell (where both diffs are 0).
+        return rowDiff <= 1 && colDiff <= 1 && (rowDiff + colDiff > 0);
+    };
+
     const getEmptyCells = () => {
         const emptyCells = [];
         for (let i = 0; i < boardState.length; i++) {
@@ -74,15 +89,45 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBoard(); // Render after spawning to show the new block
     };
 
-    const handleBlockClick = (index) => {
-        if (selectedBlockIndex === index) {
-            // Clicked the same block, so deselect it
+    const handleBlockClick = (clickedIndex) => {
+        if (selectedBlockIndex === -1) {
+            // No block is selected, so select this one.
+            selectedBlockIndex = clickedIndex;
+            renderBoard();
+            return;
+        }
+
+        if (selectedBlockIndex === clickedIndex) {
+            // Clicked the same block, so deselect it.
+            selectedBlockIndex = -1;
+            renderBoard();
+            return;
+        }
+
+        // A block is selected (selectedBlockIndex), and another block is clicked (clickedIndex).
+        // This is a merge attempt.
+
+        const isNeighbor = areNeighbors(selectedBlockIndex, clickedIndex);
+        const sameValue = boardState[selectedBlockIndex] === boardState[clickedIndex];
+
+        if (isNeighbor && sameValue) {
+            // Merge condition met!
+            const mergedValue = boardState[clickedIndex] + 1;
+            boardState[clickedIndex] = mergedValue; // Update second block's value
+            boardState[selectedBlockIndex] = 0;   // Empty the first block's cell
+
+            // Update score
+            score += mergedValue;
+            scoreElement.textContent = score;
+
+            // Deselect after merge
             selectedBlockIndex = -1;
         } else {
-            // Clicked a new block, select it
-            selectedBlockIndex = index;
+            // Not a valid merge. Select the newly clicked block instead.
+            selectedBlockIndex = clickedIndex;
         }
-        // Re-render the board to show the selection change
+
+        // Re-render the board to show the result of the action.
         renderBoard();
     };
 
