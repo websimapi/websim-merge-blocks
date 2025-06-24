@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
 
     const GAME_CONFIG = {
-        easy: { gridSize: 4, initialBlocks: 2, sandGrains: 15 },
+        easy: { gridSize: 4, initialBlocks: 2, sandGrains: 25 },
         medium: { gridSize: 5, initialBlocks: 5, sandGrains: 20 },
         hard: { gridSize: 6, initialBlocks: 6, sandGrains: 25 },
     };
