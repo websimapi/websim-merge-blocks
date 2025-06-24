@@ -11,8 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const titleScreen = document.getElementById('title-screen');
     const gameScreen = document.getElementById('game-screen');
     const replayScreen = document.getElementById('replay-screen');
+    const replayMenuScreen = document.getElementById('replay-menu-screen');
     const gameBoard = document.getElementById('game-board');
     const replayBoard = document.getElementById('replay-board');
+    const replayMenuBoard = document.getElementById('replay-menu-board');
     const homeBtn = document.getElementById('home-btn');
     const gameOverlay = document.getElementById('game-overlay');
     const header = document.querySelector('header');
@@ -27,6 +29,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const newGameBtn = document.getElementById('new-game-btn');
     const replayBoardWrapper = document.getElementById('replay-board-wrapper');
     const replayStatus = document.getElementById('replay-status');
+
+    // Replay menu elements
+    const replayMenuBtn = document.getElementById('replay-menu-btn');
+    const watchReplayMenuBtn = document.getElementById('watch-replay-menu-btn');
+    const continueDifficultyButtons = document.querySelectorAll('.continue-difficulty-btn');
+    const backToHomeBtn = document.getElementById('back-to-home-btn');
+    const replayMenuBoardWrapper = document.getElementById('replay-menu-board-wrapper');
+    const replayMenuStatus = document.getElementById('replay-menu-status');
+    const noReplayMessage = document.getElementById('no-replay-message');
+    const replayDetails = document.getElementById('replay-details');
+    const replayTheme = document.getElementById('replay-theme');
+    const replayDifficulty = document.getElementById('replay-difficulty');
+    const replayFinalScore = document.getElementById('replay-final-score');
 
     const levelDescriptors = [
         "a basic", "an improved", "an advanced", "a superior", "a masterful", 
@@ -370,6 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
         titleScreen.classList.add('active');
         gameScreen.classList.remove('active');
         replayScreen.classList.remove('active');
+        replayMenuScreen.classList.remove('active');
         header.classList.remove('in-game');
         gameBoard.innerHTML = '';
         hourglassManager.destroy();
@@ -377,11 +393,79 @@ document.addEventListener('DOMContentLoaded', () => {
         combinationsContainer.style.display = 'block';
     }
 
+    function showReplayMenu() {
+        const storedReplay = replayManager.loadFromStorage();
+        
+        if (!storedReplay) {
+            noReplayMessage.style.display = 'block';
+            replayDetails.style.display = 'none';
+            watchReplayMenuBtn.style.display = 'none';
+            document.getElementById('continue-with-images-section').style.display = 'none';
+        } else {
+            noReplayMessage.style.display = 'none';
+            replayDetails.style.display = 'block';
+            watchReplayMenuBtn.style.display = 'block';
+            document.getElementById('continue-with-images-section').style.display = 'block';
+            
+            // Calculate final score from replay events
+            let finalScore = 0;
+            storedReplay.events.forEach(event => {
+                if (event.type === 'move' && event.data.scoreGained) {
+                    finalScore += event.data.scoreGained;
+                }
+            });
+            
+            replayTheme.textContent = storedReplay.theme || 'Blocks';
+            replayDifficulty.textContent = storedReplay.difficulty;
+            replayFinalScore.textContent = finalScore;
+        }
+        
+        titleScreen.classList.remove('active');
+        replayMenuScreen.classList.add('active');
+    }
+
     // Event listeners
     difficultyButtons.forEach(button => {
         button.addEventListener('click', () => {
             startGame(button.dataset.difficulty);
         });
+    });
+
+    // Replay menu event listeners
+    replayMenuBtn.addEventListener('click', () => {
+        showReplayMenu();
+    });
+
+    watchReplayMenuBtn.addEventListener('click', () => {
+        replayMenuBoardWrapper.style.display = 'block';
+        replayMenuStatus.textContent = 'Playing Replay...';
+        
+        const replayMenuBoardRenderer = new BoardRenderer(
+            gameState,
+            replayMenuBoard,
+            null, // No drag handler for replay
+            () => {}, // No block click for replay
+            () => {}  // No empty cell click for replay
+        );
+
+        replayManager.playReplay(gameState, replayMenuBoardRenderer, () => {
+            replayMenuStatus.textContent = 'Replay Complete!';
+        });
+    });
+
+    continueDifficultyButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const storedReplay = replayManager.loadFromStorage();
+            if (storedReplay) {
+                themeInput.value = storedReplay.theme || '';
+                startGame(button.dataset.difficulty, true);
+            }
+        });
+    });
+
+    backToHomeBtn.addEventListener('click', () => {
+        replayMenuBoardWrapper.style.display = 'none';
+        showTitleScreen();
     });
 
     // Replay event listeners
