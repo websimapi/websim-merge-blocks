@@ -165,7 +165,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isDragging) return;
         
         if (selectedBlockIndex === -1) {
-            // Nothing is selected, so clicking an empty cell does nothing.
+            // No block is selected, so spawn a new block in this empty cell
+            boardState[clickedIndex] = getNewBlockValue();
+            renderBoard();
             return;
         }
 
