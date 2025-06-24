@@ -1,3 +1,5 @@
+import Matter from 'matter-js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const titleScreen = document.getElementById('title-screen');
     const gameScreen = document.getElementById('game-screen');
@@ -20,6 +22,87 @@ document.addEventListener('DOMContentLoaded', () => {
     let score = 0;
     let spawnInterval = null;
     let selectedBlockIndex = -1;
+
+    // --- Hourglass Physics Timer Setup ---
+    const { Engine, Render, Runner, World, Bodies, Body, Events } = Matter;
+    let engine, render, runner;
+    let grains = [];
+    let passedCount = 0;
+    const TOTAL_GRAINS = 100;
+    let hourglassCallback = null;
+
+    function initHourglass() {
+        // cleanup previous
+        if (engine) {
+            Runner.stop(runner);
+            Render.stop(render);
+            render.canvas.remove();
+            render.textures = {};
+            engine = render = runner = null;
+            grains = [];
+            passedCount = 0;
+        }
+        const container = document.getElementById('timer-container');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        engine = Engine.create();
+        const world = engine.world;
+        render = Render.create({
+            element: container,
+            engine,
+            options: { width, height, wireframes: false, background: 'transparent' }
+        });
+        runner = Runner.create();
+        Runner.run(runner, engine);
+        Render.run(render);
+
+        // container boundaries
+        const thickness = 10;
+        const walls = [
+            Bodies.rectangle(width/2, -thickness/2, width, thickness, { isStatic: true }),
+            Bodies.rectangle(width/2, height+thickness/2, width, thickness, { isStatic: true }),
+            Bodies.rectangle(-thickness/2, height/2, thickness, height, { isStatic: true }),
+            Bodies.rectangle(width+thickness/2, height/2, thickness, height, { isStatic: true })
+        ];
+        World.add(world, walls);
+
+        // hourglass shape (two trapezoids)
+        const slope = 0.5;
+        const topHG = Bodies.trapezoid(width/2, height/4, width*0.8, height/2, slope, { isStatic: true, render: { fillStyle: 'transparent', strokeStyle: '#776e65', lineWidth: 2 } });
+        Body.rotate(topHG, Math.PI);
+        const bottomHG = Bodies.trapezoid(width/2, 3*height/4, width*0.8, height/2, slope, { isStatic: true, render: { fillStyle: 'transparent', strokeStyle: '#776e65', lineWidth: 2 } });
+        World.add(world, [topHG, bottomHG]);
+
+        // spawn sand grains
+        grains = [];
+        for (let i = 0; i < TOTAL_GRAINS; i++) {
+            const x = width/2 + (Math.random()*20 - 10);
+            const y = height/6 + Math.random()*20;
+            const grain = Bodies.circle(x, y, 2, { restitution: 0.1, friction: 0.005, density: 0.001, render: { fillStyle: '#F4D35E' } });
+            grain.passed = false;
+            grains.push(grain);
+        }
+        World.add(world, grains);
+
+        // track when last grain passes through the waist (y > height/2)
+        Events.on(engine, 'afterUpdate', () => {
+            for (const grain of grains) {
+                if (!grain.passed && grain.position.y > height/2) {
+                    grain.passed = true;
+                    passedCount++;
+                    if (passedCount === TOTAL_GRAINS) {
+                        onHourglassEnd();
+                    }
+                }
+            }
+        });
+    }
+
+    function onHourglassEnd() {
+        if (typeof hourglassCallback === 'function') {
+            hourglassCallback();
+        }
+    }
 
     const getNewBlockValue = () => {
         // This function determines the value of a new block based on the score.
@@ -252,6 +335,13 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(() => {
              renderBoard();
         });
+
+        // initialize hourglass timer callback & physics
+        hourglassCallback = () => {
+            alert("Time's up!");
+            showTitleScreen();
+        };
+        initHourglass();
     };
     
     const showTitleScreen = () => {
