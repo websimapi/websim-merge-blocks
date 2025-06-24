@@ -64,7 +64,7 @@ header.in-game {
 }
 
 #hourglass-flipper.flipped {
-    transform: rotateY(180deg);
+    transform: rotateX(180deg);
 }
 
 #hourglass-svg {
@@ -78,16 +78,12 @@ header.in-game {
     animation-iteration-count: 1; /* Was infinite, changed to 1 */
     animation-fill-mode: forwards;
     transform-origin: center;
-    opacity: 0;
+    opacity: 1; /* Make particles visible by default */
 }
 
 @keyframes fall {
     0% {
         transform: translateY(0px);
-        opacity: 1;
-    }
-    99% {
-        opacity: 1;
     }
     100% {
         transform: translateY(60px); /* Fall distance */
