@@ -103,7 +103,7 @@ export class DragHandler {
     }
     
     handleDragStart(startIndex, clientX, clientY) {
-        if (this.gameState.getBlock(startIndex) === null) return false;
+        if (this.gameState.getBlockValue(startIndex) === 0) return false;
         
         this.isDragging = true;
         this.dragStartIndex = startIndex;
@@ -148,36 +148,30 @@ export class DragHandler {
     }
     
     processDragAction(startIndex, endIndex) {
-        const startBlock = this.gameState.getBlock(startIndex);
-        const endBlock = this.gameState.getBlock(endIndex);
+        const startValue = this.gameState.getBlockValue(startIndex);
+        const endValue = this.gameState.getBlockValue(endIndex);
         const isNeighbor = this.gameState.areNeighbors(startIndex, endIndex);
         
-        if (endBlock === null) {
+        if (endValue === 0) {
             // Moving to empty cell
             if (isNeighbor) {
-                this.gameState.placeBlock(endIndex, startBlock);
+                this.gameState.placeBlock(endIndex, startValue);
                 this.gameState.removeBlock(startIndex);
             }
         } else {
             // Merging with another block
-            const startValue = startBlock.value;
-            const endValue = endBlock.value;
             const sameValue = startValue === endValue;
             const sumValue = startValue + endValue;
             
             if (isNeighbor && sameValue) {
                 const mergedValue = endValue + 1;
-                const newBlock = { value: mergedValue, id: String(mergedValue) };
-                this.gameState.placeBlock(endIndex, newBlock);
+                this.gameState.placeBlock(endIndex, mergedValue);
                 this.gameState.removeBlock(startIndex);
                 this.gameState.updateScore(mergedValue);
-            } else if (isNeighbor && !sameValue && sumValue % 2 === 0) {
+            } else if (isNeighbor && sumValue % 2 === 0) {
                 const halfValue = sumValue / 2;
-                const subId = `${Math.min(startValue, endValue)}-${Math.max(startValue, endValue)}`;
-                const subBlock = { value: halfValue, id: subId };
-
-                this.gameState.placeBlock(startIndex, subBlock);
-                this.gameState.placeBlock(endIndex, subBlock);
+                this.gameState.placeBlock(startIndex, halfValue);
+                this.gameState.placeBlock(endIndex, halfValue);
                 this.gameState.updateScore(halfValue * 2);
             }
         }

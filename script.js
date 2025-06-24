@@ -3,6 +3,7 @@ import { GameState } from './game-state.js';
 import { HourglassManager } from './hourglass.js';
 import { DragHandler } from './drag-handler.js';
 import { BoardRenderer } from './board-renderer.js';
+import { CombinationsDisplay } from './combinations-display.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM elements
@@ -14,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const header = document.querySelector('header');
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
     const themeInput = document.getElementById('theme-input');
-    const loadingOverlay = document.getElementById('loading-overlay');
 
     const levelDescriptors = [
         "a basic", "an improved", "an advanced", "a superior", "a masterful", 
@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameState = new GameState();
     const hourglassManager = new HourglassManager(gameState);
     const dragHandler = new DragHandler(gameState, gameBoard);
+    const combinationsDisplay = new CombinationsDisplay(gameState);
     const boardRenderer = new BoardRenderer(
         gameState, 
         gameBoard, 
@@ -38,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dragHandler.onDragComplete = () => {
         boardRenderer.render();
         checkAllBlockImages();
+        combinationsDisplay.update();
     };
 
     function spawnRandomBlock() {
@@ -82,13 +84,12 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < actualNumToSpawn; i++) {
             const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
             const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
-            const value = gameState.getNewBlockValue();
-            const newBlock = { value: value, id: String(value) };
-            gameState.placeBlock(boardIndex, newBlock);
+            gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
         }
 
         boardRenderer.render();
         checkAllBlockImages();
+        combinationsDisplay.update();
     }
 
     function gameOver() {
@@ -106,37 +107,29 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const selectedIndex = gameState.getSelectedBlockIndex();
-
-        if (selectedIndex === clickedIndex) {
+        if (gameState.getSelectedBlockIndex() === clickedIndex) {
             gameState.deselectBlock();
             boardRenderer.render();
             return;
         }
 
-        const selectedBlock = gameState.getBlock(selectedIndex);
-        const clickedBlock = gameState.getBlock(clickedIndex);
-
+        const selectedIndex = gameState.getSelectedBlockIndex();
         const isNeighbor = gameState.areNeighbors(selectedIndex, clickedIndex);
-        const selectedValue = selectedBlock.value;
-        const clickedValue = clickedBlock.value;
+        const selectedValue = gameState.getBlockValue(selectedIndex);
+        const clickedValue = gameState.getBlockValue(clickedIndex);
         const sameValue = selectedValue === clickedValue;
         const sumValue = selectedValue + clickedValue;
 
         if (isNeighbor && sameValue) {
-            const mergedValue = clickedValue + 1;
-            const newBlock = { value: mergedValue, id: String(mergedValue) };
-            gameState.placeBlock(clickedIndex, newBlock);
+            const mergedValue = gameState.getBlockValue(clickedIndex) + 1;
+            gameState.placeBlock(clickedIndex, mergedValue);
             gameState.removeBlock(selectedIndex);
             gameState.updateScore(mergedValue);
             gameState.deselectBlock();
-        } else if (isNeighbor && !sameValue && sumValue % 2 === 0) {
+        } else if (isNeighbor && sumValue % 2 === 0) {
             const halfValue = sumValue / 2;
-            const subId = `${Math.min(selectedValue, clickedValue)}-${Math.max(selectedValue, clickedValue)}`;
-            const subBlock = { value: halfValue, id: subId };
-            
-            gameState.placeBlock(selectedIndex, subBlock);
-            gameState.placeBlock(clickedIndex, subBlock);
+            gameState.placeBlock(selectedIndex, halfValue);
+            gameState.placeBlock(clickedIndex, halfValue);
             gameState.updateScore(halfValue * 2);
             gameState.deselectBlock();
         } else {
@@ -145,17 +138,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         boardRenderer.render();
         checkAllBlockImages();
+        combinationsDisplay.update();
     }
 
     function handleEmptyCellClick(clickedIndex) {
         if (dragHandler.isDragging) return;
         
         if (!gameState.hasSelectedBlock()) {
-            const value = gameState.getNewBlockValue();
-            const newBlock = { value: value, id: String(value) };
-            gameState.placeBlock(clickedIndex, newBlock);
+            gameState.placeBlock(clickedIndex, gameState.getNewBlockValue());
             boardRenderer.render();
             checkAllBlockImages();
+            combinationsDisplay.update();
             return;
         }
 
@@ -163,24 +156,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const isNeighbor = gameState.areNeighbors(selectedIndex, clickedIndex);
 
         if (isNeighbor) {
-            gameState.placeBlock(clickedIndex, gameState.getBlock(selectedIndex));
+            gameState.placeBlock(clickedIndex, gameState.getBlockValue(selectedIndex));
             gameState.removeBlock(selectedIndex);
             gameState.deselectBlock();
             boardRenderer.render();
             checkAllBlockImages();
+            combinationsDisplay.update();
         } else {
             gameState.deselectBlock();
             boardRenderer.render();
         }
     }
 
-    async function generateImageForNormalBlock(value) {
-        const id = String(value);
-        if (!gameState.theme || gameState.getImageForBlockId(id)) {
+    async function generateImageForValue(value) {
+        if (!gameState.theme || gameState.getImageForValue(value)) {
             return;
         }
-        gameState.setImageForBlockId(id, 'loading');
-        boardRenderer.render();
+
+        // Set status to loading to prevent multiple requests
+        gameState.setImageForValue(value, 'loading');
+        boardRenderer.render(); // Show loading indicator
 
         try {
             const descriptor = levelDescriptors[value - 1] || `an evolved`;
@@ -189,101 +184,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 transparent: false,
                 aspect: "square"
             });
-            gameState.setImageForBlockId(id, result.url);
+            gameState.setImageForValue(value, result.url);
         } catch (error) {
             console.error(`Failed to generate image for value ${value}:`, error);
-            gameState.setImageForBlockId(id, null);
+            // Revert status if generation fails
+            gameState.setImageForValue(value, null);
         }
+
         boardRenderer.render();
-    }
-
-    async function generateImageForSubCombination(subId) {
-        if (!gameState.theme || gameState.getImageForBlockId(subId)) {
-            return;
-        }
-        gameState.setImageForBlockId(subId, 'loading');
-        boardRenderer.render();
-        loadingOverlay.classList.add('active');
-
-        try {
-            const [val1, val2] = subId.split('-').map(Number);
-            const imageUrl1 = gameState.getImageForBlockId(String(val1));
-            const imageUrl2 = gameState.getImageForBlockId(String(val2));
-
-            if (!imageUrl1 || !imageUrl2 || imageUrl1 === 'loading' || imageUrl2 === 'loading') {
-                console.warn(`Parent images for ${subId} not ready, will retry.`);
-                gameState.setImageForBlockId(subId, null);
-                loadingOverlay.classList.remove('active');
-                boardRenderer.render();
-                return;
-            }
-
-            // Step 1 & 2: Get descriptions
-            const descriptionPrompt = `List the key visual elements of this image of a "${gameState.theme}" icon.`;
-            const [desc1Completion, desc2Completion] = await Promise.all([
-                websim.chat.completions.create({ messages: [{ role: 'user', content: [{ type: 'text', text: descriptionPrompt }, { type: 'image_url', image_url: { url: imageUrl1 }}]}] }),
-                websim.chat.completions.create({ messages: [{ role: 'user', content: [{ type: 'text', text: descriptionPrompt }, { type: 'image_url', image_url: { url: imageUrl2 }}]}] })
-            ]);
-
-            const desc1 = desc1Completion.content;
-            const desc2 = desc2Completion.content;
-
-            // Step 3: Combine descriptions using JSON mode
-            const combinePrompt = `Combine the visual elements from the two descriptions below into a single, new concept. The theme is "${gameState.theme}". Create a new prompt for an image generation AI that describes this fused concept. The prompt must start with "A cute, simple icon of...".
-            
-Description 1 Elements: ${desc1}
-Description 2 Elements: ${desc2}
-
-Respond with JSON following this schema:
-{ "prompt": string }`;
-
-            const combinedDescCompletion = await websim.chat.completions.create({
-                messages: [{ role: 'user', content: combinePrompt }],
-                json: true,
-            });
-
-            const resultData = JSON.parse(combinedDescCompletion.content);
-            const finalPrompt = resultData.prompt;
-
-            // Step 4: Generate new image
-            const result = await websim.imageGen({
-                prompt: `${finalPrompt} Sticker style, on a white background. Do not include any text or numbers.`,
-                transparent: false,
-                aspect: "square"
-            });
-            gameState.setImageForBlockId(subId, result.url);
-
-        } catch (error) {
-            console.error(`Failed to generate image for sub-combination ${subId}:`, error);
-            gameState.setImageForBlockId(subId, null);
-        } finally {
-            loadingOverlay.classList.remove('active');
-            boardRenderer.render();
-        }
+        combinationsDisplay.update();
     }
 
     function checkAllBlockImages() {
         if (!gameState.theme) return;
 
-        const uniqueBlocks = [];
-        const seenIds = new Set();
-        gameState.boardState.forEach(block => {
-            if (block && !seenIds.has(block.id)) {
-                uniqueBlocks.push(block);
-                seenIds.add(block.id);
-            }
-        });
-
-        uniqueBlocks.forEach(block => {
-            const id = block.id;
-            if (!gameState.getImageForBlockId(id)) {
-                if (id.includes('-')) {
-                    // It's a sub-combination
-                    generateImageForSubCombination(id);
-                } else {
-                    // It's a normal block
-                    generateImageForNormalBlock(block.value);
-                }
+        const uniqueValues = [...new Set(gameState.boardState.filter(v => v > 0))];
+        uniqueValues.forEach(value => {
+            if (!gameState.getImageForValue(value)) {
+                generateImageForValue(value);
             }
         });
     }
@@ -293,9 +211,20 @@ Respond with JSON following this schema:
         const config = gameState.initializeGame(difficulty, theme);
         hourglassManager.destroy();
 
+        // Spawn initial blocks without generating images for them yet
         for (let i = 0; i < config.initialBlocks; i++) {
-            spawnRandomBlock(); // This will also trigger image checks
+             const emptyCells = gameState.getEmptyCells();
+             if (emptyCells.length > 0) {
+                const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
+                const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
+                gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
+             }
         }
+        
+        // Now render, check for all images, and update combinations
+        boardRenderer.render();
+        checkAllBlockImages();
+        combinationsDisplay.update();
 
         titleScreen.classList.remove('active');
         gameScreen.classList.add('active');
@@ -332,26 +261,9 @@ Respond with JSON following this schema:
         }
     });
 
-    // We make the overlay clickable to deselect blocks
-    const gameScreenDiv = document.getElementById('game-screen');
-    gameScreenDiv.addEventListener('click', (event) => {
-        // if the click is on the game-screen background itself (and not on the board)
-        if (event.target === gameScreenDiv || event.target === document.getElementById('game-container')) {
-             gameState.deselectBlock();
-             boardRenderer.render();
-        }
-    });
-
-    gameOverlay.addEventListener('click', (event) => {
-        // This is a backup for clicks on the board but not on a block.
-        const boardRect = gameBoard.getBoundingClientRect();
-        if (
-            event.clientX >= boardRect.left && event.clientX <= boardRect.right &&
-            event.clientY >= boardRect.top && event.clientY <= boardRect.bottom
-        ) {
-            gameState.deselectBlock();
-            boardRenderer.render();
-        }
+    gameOverlay.addEventListener('click', () => {
+        gameState.deselectBlock();
+        boardRenderer.render();
     });
     
     document.addEventListener('click', (event) => {

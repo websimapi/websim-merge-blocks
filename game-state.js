@@ -29,7 +29,7 @@ export class GameState {
         this.gridSize = config.gridSize;
         this.score = 0;
         this.selectedBlockIndex = -1;
-        this.boardState = new Array(this.gridSize * this.gridSize).fill(null);
+        this.boardState = new Array(this.gridSize * this.gridSize).fill(0);
         return config;
     }
     
@@ -73,7 +73,7 @@ export class GameState {
     getEmptyCells() {
         const emptyCells = [];
         for (let i = 0; i < this.boardState.length; i++) {
-            if (this.boardState[i] === null) {
+            if (this.boardState[i] === 0) {
                 emptyCells.push(i);
             }
         }
@@ -98,10 +98,10 @@ export class GameState {
     }
     
     removeBlock(index) {
-        this.boardState[index] = null;
+        this.boardState[index] = 0;
     }
     
-    getBlock(index) {
+    getBlockValue(index) {
         return this.boardState[index];
     }
     
@@ -117,11 +117,11 @@ export class GameState {
         return this.selectedBlockIndex;
     }
 
-    getImageForBlockId(id) {
-        return this.blockImages[id];
+    getImageForValue(value) {
+        return this.blockImages[value];
     }
 
-    setImageForBlockId(id, url) {
-        this.blockImages[id] = url;
+    setImageForValue(value, url) {
+        this.blockImages[value] = url;
     }
 }
