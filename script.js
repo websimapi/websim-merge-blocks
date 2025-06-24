@@ -395,11 +395,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         particle.render.fillStyle = '#4169E1'; // Blue water
                     }
                 } else if (weatherState === 'steaming') {
-                    // Steam rising
+                    // Steam particles - teleport them to top when they reach certain height
                     if (y > 120) {
                         particle.render.fillStyle = '#F0F8FF'; // Light steam
-                        // Add upward force to simulate steam rising
-                        Matter.Body.applyForce(particle, particle.position, { x: 0, y: -0.0008 });
+                        // Teleport particle to top chamber when it's been heated enough
+                        if (stateTimer > 30) { // Give some time for heating visual effect
+                            Matter.Body.setPosition(particle, {
+                                x: 25 + Math.random() * 70,
+                                y: 25 + Math.random() * 40
+                            });
+                            Matter.Body.setVelocity(particle, { x: 0, y: 0 }); // Reset velocity
+                            particle.render.fillStyle = '#F5F5F5'; // White clouds forming
+                        }
                     } else if (y < 80) {
                         particle.render.fillStyle = '#F5F5F5'; // White clouds forming
                     }
@@ -426,9 +433,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (weatherState === 'heating' && stateTimer > 90) {
                 weatherState = 'steaming';
                 stateTimer = 0;
-                // Reverse gravity for steam effect
-                engine.world.gravity.y = -0.2;
-            } else if (weatherState === 'steaming') {
+                // Keep normal gravity for steaming process
+                engine.world.gravity.y = 0.3;
+            } else if (weatherState === 'steaming' && stateTimer > 60) {
                 // Check if particles are back in top chamber
                 const topParticles = sandGrains.filter(p => p.position.y < 80);
                 if (topParticles.length === sandGrains.length) {
