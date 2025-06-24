@@ -316,8 +316,8 @@ document.addEventListener('DOMContentLoaded', () => {
             combinationsContainer.style.display = 'block';
         }
 
-        // Spawn initial blocks without generating images for them yet
-        const initialBlocks = [];
+        // Spawn initial blocks and track their placement
+        const initialBoardState = [...gameState.boardState]; // Copy empty board state
         for (let i = 0; i < config.initialBlocks; i++) {
              const emptyCells = gameState.getEmptyCells();
              if (emptyCells.length > 0) {
@@ -325,12 +325,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
                 const newValue = gameState.getNewBlockValue();
                 gameState.placeBlock(boardIndex, newValue);
-                initialBlocks[boardIndex] = newValue;
+                initialBoardState[boardIndex] = newValue;
              }
         }
         
-        // Initialize replay tracking
-        replayManager.startNewGame(difficulty, theme, gameState.getInitialBoardState());
+        // Initialize replay tracking with the final board state after initial spawns
+        replayManager.startNewGame(difficulty, theme, initialBoardState);
+        
+        // Pass gameState reference to replay manager for accurate state tracking
+        replayManager.gameState = gameState;
         
         // Now render, check for all images, and update combinations
         boardRenderer.render();

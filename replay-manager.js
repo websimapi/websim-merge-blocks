@@ -8,9 +8,11 @@ export class ReplayManager {
             initialState: null,
             events: [],
             imageUrls: {},
-            startTime: null
+            startTime: null,
+            gridSize: null
         };
         this.isReplaying = false;
+        this.gameState = null; // Reference to game state for accurate tracking
     }
 
     startNewGame(difficulty, theme, initialBlocks) {
@@ -18,11 +20,22 @@ export class ReplayManager {
             gameId: Date.now().toString(),
             theme: theme,
             difficulty: difficulty,
-            initialState: [...initialBlocks],
+            initialState: new Array(initialBlocks.length).fill(0), // Start with empty board
             events: [],
             imageUrls: {},
-            startTime: Date.now()
+            startTime: Date.now(),
+            gridSize: null
         };
+        
+        // Record initial block placements as events
+        initialBlocks.forEach((value, index) => {
+            if (value > 0) {
+                this.recordEvent('initial_spawn', {
+                    index: index,
+                    value: value
+                });
+            }
+        });
     }
 
     recordEvent(type, data) {
@@ -45,7 +58,8 @@ export class ReplayManager {
             fromValue: fromValue,
             toValue: toValue,
             resultValue: resultValue,
-            scoreGained: scoreGained
+            scoreGained: scoreGained,
+            boardStateAfter: [...this.gameState?.boardState] // Capture full board state after move
         });
     }
 
@@ -53,7 +67,8 @@ export class ReplayManager {
         this.recordEvent('spawn', {
             index: index,
             value: value,
-            isEarly: isEarly
+            isEarly: isEarly,
+            boardStateAfter: [...this.gameState?.boardState] // Capture full board state after spawn
         });
     }
 
@@ -100,19 +115,17 @@ export class ReplayManager {
         // Reset game state to initial conditions
         gameState.initializeGame(replay.difficulty, replay.theme);
         gameState.blockImages = { ...replay.imageUrls };
-
-        // Place initial blocks
-        replay.initialState.forEach((value, index) => {
-            if (value > 0) {
-                gameState.placeBlock(index, value);
-            }
-        });
+        gameState.score = 0; // Reset score
+        
+        // Start with completely empty board
+        gameState.boardState = new Array(gameState.gridSize * gameState.gridSize).fill(0);
 
         boardRenderer.render();
 
         // Play through events with timing
         let eventIndex = 0;
         const startTime = Date.now();
+        const playbackSpeed = 3; // 3x speed
 
         const playNextEvent = () => {
             if (eventIndex >= replay.events.length) {
@@ -122,7 +135,7 @@ export class ReplayManager {
             }
 
             const event = replay.events[eventIndex];
-            const targetTime = startTime + (event.timestamp / 2); // Play at 2x speed
+            const targetTime = startTime + (event.timestamp / playbackSpeed);
             const currentTime = Date.now();
 
             if (currentTime >= targetTime) {
@@ -138,6 +151,9 @@ export class ReplayManager {
 
     executeReplayEvent(event, gameState, boardRenderer) {
         switch (event.type) {
+            case 'initial_spawn':
+                gameState.placeBlock(event.data.index, event.data.value);
+                break;
             case 'spawn':
                 gameState.placeBlock(event.data.index, event.data.value);
                 break;
@@ -154,6 +170,18 @@ export class ReplayManager {
                     gameState.removeBlock(fromIndex);
                 }
                 gameState.updateScore(scoreGained);
+                
+                // Verify board state matches recorded state (for debugging)
+                if (event.data.boardStateAfter) {
+                    const currentState = JSON.stringify(gameState.boardState);
+                    const expectedState = JSON.stringify(event.data.boardStateAfter);
+                    if (currentState !== expectedState) {
+                        console.warn('Board state mismatch during replay', {
+                            expected: event.data.boardStateAfter,
+                            actual: gameState.boardState
+                        });
+                    }
+                }
                 break;
             case 'image':
                 gameState.setImageForValue(event.data.value, event.data.url);
