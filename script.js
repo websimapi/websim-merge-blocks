@@ -20,11 +20,95 @@ document.addEventListener('DOMContentLoaded', () => {
     let gridSize = 0;
     let boardState = [];
     let score = 0;
-    let spawnTimeout = null;
+    let spawnInterval = null;
     let selectedBlockIndex = -1;
     let isHourglassFlipped = false;
-    let particles = [];
-    const PARTICLE_COUNT = 50; // Reduced from 100
+
+    // --- Hourglass Physics Simulation ---
+    let sandParticles = [];
+    let animationFrameId = null;
+    const NUM_PARTICLES = 150;
+    const GRAVITY = 0.03;
+    const DAMPING = 0.8; // Energy loss on collision
+
+    const createSandParticles = () => {
+        sandContainer.innerHTML = '';
+        sandParticles = [];
+        for (let i = 0; i < NUM_PARTICLES; i++) {
+            const particleElement = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            particleElement.setAttribute('r', 1.5 + Math.random() * 0.5);
+            particleElement.classList.add('sand-particle');
+            sandContainer.appendChild(particleElement);
+
+            sandParticles.push({
+                el: particleElement,
+                x: 30 + (Math.random() - 0.5) * 38, // Start scattered in top bulb
+                y: 25 - Math.random() * 15,         // Y pos in top bulb
+                vx: 0,
+                vy: 0,
+            });
+        }
+    };
+    
+    const updateSandPhysics = () => {
+        const effectiveGravity = isHourglassFlipped ? -GRAVITY : GRAVITY;
+        const neckY = 40;
+        const topBound = 12;
+        const bottomBound = 68;
+        
+        // Define hourglass wall lines for collision
+        // (x1, y1, x2, y2)
+        const walls = [
+            [10, 10, 28, 40], // Top left
+            [50, 10, 32, 40], // Top right
+            [28, 40, 10, 70], // Bottom left
+            [32, 40, 50, 70], // Bottom right
+        ];
+
+        sandParticles.forEach(p => {
+            // Apply gravity
+            p.vy += effectiveGravity;
+            
+            // Nudge towards center when near the neck
+            const distFromNeckY = Math.abs(p.y - neckY);
+            if (distFromNeckY < 5) {
+                p.vx += (30 - p.x) * 0.005; // Funneling effect
+            }
+
+            // Update position
+            p.x += p.vx;
+            p.y += p.vy;
+
+            // Collision with floor/ceiling
+            if (!isHourglassFlipped && p.y > bottomBound) {
+                p.y = bottomBound;
+                p.vy *= -DAMPING;
+                p.vx *= DAMPING; // Friction
+            } else if (isHourglassFlipped && p.y < topBound) {
+                p.y = topBound;
+                p.vy *= -DAMPING;
+                p.vx *= DAMPING; // Friction
+            }
+
+            // Simple collision with side walls (using a bounding box approach)
+            if (p.x < 12) { p.x = 12; p.vx *= -DAMPING; }
+            if (p.x > 48) { p.x = 48; p.vx *= -DAMPING; }
+
+            // Update SVG element
+            p.el.setAttribute('cx', p.x);
+            p.el.setAttribute('cy', p.y);
+        });
+
+        animationFrameId = requestAnimationFrame(updateSandPhysics);
+    };
+
+    const stopHourglassAnimation = () => {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+    };
+    // --- End Hourglass Physics ---
 
     const getNewBlockValue = () => {
         // This function determines the value of a new block based on the score.
@@ -85,14 +169,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const spawnRandomBlock = () => {
-        // Stop any pending spawns, as this one is happening now.
-        if (spawnTimeout) clearTimeout(spawnTimeout);
-
-        // Flip the hourglass visuals
+        // Flip the hourglass first
         isHourglassFlipped = !isHourglassFlipped;
         hourglassFlipper.classList.toggle('flipped', isHourglassFlipped);
         
-        // After the flip animation completes, spawn the block and restart the sand timer.
+        // After flip animation, spawn block
         setTimeout(() => {
             const emptyCells = getEmptyCells();
             if (emptyCells.length === 0) {
@@ -104,19 +185,10 @@ document.addEventListener('DOMContentLoaded', () => {
             boardState[randomIndex] = getNewBlockValue(); 
             renderBoard(); // Render after spawning to show the new block
             
-            // When a block spawns, reset the hourglass animation and set the timer for the next one.
-            const spawnRate = GAME_CONFIG[currentDifficulty].spawnRate;
-            startHourglassAnimation(spawnRate);
-        }, 600); // Duration of the flip animation
+        }, 300); // Half of flip animation duration
     };
 
     const handleBlockClick = (clickedIndex) => {
-        if (boardState[clickedIndex] === 0) {
-            // Clicked an empty cell, so handle it as an empty cell click
-            handleEmptyCellClick(clickedIndex);
-            return;
-        }
-
         if (selectedBlockIndex === -1) {
             // No block is selected, so select this one.
             selectedBlockIndex = clickedIndex;
@@ -247,66 +319,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentDifficulty = 'easy'; // Keep track of current difficulty
 
-    const startHourglassAnimation = (durationMs) => {
-        let maxAnimationTime = 0;
-        const durationSec = durationMs / 1000;
-    
-        particles.forEach(particle => {
-            // Remove the falling class to reset the animation
-            particle.classList.remove('falling');
-    
-            // Force a reflow to make sure the class removal is registered before adding it back
-            void particle.offsetWidth;
-    
-            // Stagger particle fall start time over the first 80% of the duration
-            const delay = Math.random() * (durationSec * 0.8);
-            // Sand should finish falling just before the next spawn
-            const animDuration = durationSec * 0.9;
-    
-            particle.style.animationDelay = `${delay}s`;
-            particle.style.animationDuration = `${animDuration}s`;
-            
-            // Add the class back to start the animation
-            particle.classList.add('falling');
-    
-            // Track the time until the last particle finishes
-            if (delay + animDuration > maxAnimationTime) {
-                maxAnimationTime = delay + animDuration;
-            }
-        });
-    
-        // Set a timeout for the next spawn based on when the last particle will have fallen.
-        if (spawnTimeout) clearTimeout(spawnTimeout);
-        spawnTimeout = setTimeout(spawnRandomBlock, maxAnimationTime * 1000);
-    };
-
-    const createParticles = () => {
-        sandContainer.innerHTML = '';
-        particles = [];
-        for (let i = 0; i < PARTICLE_COUNT; i++) {
-            const particle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            // Random start X near the neck, Y in top bulb
-            const initialX = 30 + (Math.random() - 0.5) * 15;
-            const initialY = 15 + Math.random() * 10;
-            
-            particle.setAttribute('cx', initialX);
-            particle.setAttribute('cy', initialY);
-            particle.setAttribute('r', 1.5 + Math.random());
-            particle.classList.add('sand-particle');
-            
-            sandContainer.appendChild(particle);
-            particles.push(particle);
-        }
-    };
-
     const startGame = (difficulty) => {
         currentDifficulty = difficulty; // Store difficulty
         const config = GAME_CONFIG[difficulty];
         gridSize = config.gridSize;
         
-        // Clear any existing game timer
-        if (spawnTimeout) {
-            clearTimeout(spawnTimeout);
+        // Clear any existing game interval
+        if (spawnInterval) {
+            clearInterval(spawnInterval);
         }
 
         // Reset game state
@@ -319,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initialize board state with all zeros
         boardState = new Array(gridSize * gridSize).fill(0);
         
-        // Spawn initial blocks without flipping hourglass
+        // Spawn initial blocks
         const spawnRate = config.spawnRate;
         for (let i = 0; i < config.initialBlocks; i++) {
             const emptyCells = getEmptyCells();
@@ -329,16 +349,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Create the persistent particle elements for the hourglass
-        createParticles();
-
         titleScreen.classList.remove('active');
         gameScreen.classList.add('active');
         header.classList.add('in-game');
         
-        // Start the first hourglass cycle. This will schedule the first spawn.
-        startHourglassAnimation(spawnRate);
+        // Create sand particles and start the physics simulation
+        createSandParticles();
+        stopHourglassAnimation(); // Ensure no lingering animations
+        updateSandPhysics();
         
+        // Start spawning blocks periodically
+        spawnInterval = setInterval(spawnRandomBlock, spawnRate);
+
         // Delay rendering to allow screen transition and correct board size calculation
         requestAnimationFrame(() => {
              renderBoard();
@@ -350,13 +372,13 @@ document.addEventListener('DOMContentLoaded', () => {
         gameScreen.classList.remove('active');
         header.classList.remove('in-game');
         gameBoard.innerHTML = '';
-        // Stop spawning blocks when returning to menu
-        if (spawnTimeout) {
-            clearTimeout(spawnTimeout);
-            spawnTimeout = null;
+        // Stop spawning blocks and physics simulation when returning to menu
+        if (spawnInterval) {
+            clearInterval(spawnInterval);
+            spawnInterval = null;
         }
-        sandContainer.innerHTML = ''; // Clear sand
-        particles = [];
+        stopHourglassAnimation();
+        sandContainer.innerHTML = ''; // Clear sand particles
         selectedBlockIndex = -1; // Reset selection
         isHourglassFlipped = false;
         hourglassFlipper.classList.remove('flipped');
@@ -370,6 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     backButton.addEventListener('click', showTitleScreen);
 
+    // If the user clicks outside the game board area, deselect the block.
     // Clicks on blocks or empty cells are handled by their own listeners.
     gameOverlay.addEventListener('click', deselectBlock);
     document.addEventListener('click', (event) => {
