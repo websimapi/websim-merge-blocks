@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
         easy: { gridSize: 4, initialBlocks: 2, sandGrains: 15 },
         medium: { gridSize: 5, initialBlocks: 5, sandGrains: 20 },
         hard: { gridSize: 6, initialBlocks: 6, sandGrains: 25 },
+        zen: { gridSize: 4, initialBlocks: 2, sandGrains: 15 }
     };
 
     let gridSize = 0;
@@ -92,8 +93,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const spawnRandomBlock = () => {
         const emptyCells = getEmptyCells();
         if (emptyCells.length === 0) {
-            console.log("No empty cells to spawn a new block.");
-            return;
+            if (currentDifficulty === 'zen') {
+                console.log("Grid full in Zen mode - continuing without spawning");
+                resetHourglass(); // Just reset the hourglass to continue the timer
+                return;
+            } else {
+                console.log("Game Over - No empty cells to spawn a new block.");
+                // Handle game over for other modes (could add game over screen later)
+                return;
+            }
         }
         const randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
         boardState[randomIndex] = getNewBlockValue(); 
@@ -471,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const world = engine.world;
         
         // Set gravity based on difficulty - weaker for easy mode
-        if (currentDifficulty === 'easy') {
+        if (currentDifficulty === 'easy' || currentDifficulty === 'zen') {
             engine.world.gravity.y = 0.025;
         } else if (currentDifficulty === 'medium') {
             engine.world.gravity.y = 0.167;
