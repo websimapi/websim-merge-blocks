@@ -42,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (boardChanged) {
             checkAllBlockImages();
             combinationsDisplay.update();
-            prepareNextSpawn();
         }
     };
 
@@ -155,7 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (boardChanged) {
             checkAllBlockImages();
             combinationsDisplay.update();
-            prepareNextSpawn();
         }
     }
 
@@ -186,7 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (boardChanged) {
             checkAllBlockImages();
             combinationsDisplay.update();
-            prepareNextSpawn();
         }
     }
 
