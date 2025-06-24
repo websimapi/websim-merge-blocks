@@ -37,10 +37,6 @@ export class DragHandler {
     
     getIndexFromPosition(x, y) {
         const boardRect = this.gameBoard.getBoundingClientRect();
-        if (x < boardRect.left || x > boardRect.right || y < boardRect.top || y > boardRect.bottom) {
-            return -1;
-        }
-
         const relativeX = x - boardRect.left;
         const relativeY = y - boardRect.top;
         
@@ -136,8 +132,9 @@ export class DragHandler {
         
         this.removeDragLine();
         
+        let boardChanged = false;
         if (this.dragEndIndex !== -1 && this.dragEndIndex !== this.dragStartIndex) {
-            this.processDragAction(this.dragStartIndex, this.dragEndIndex);
+            boardChanged = this.processDragAction(this.dragStartIndex, this.dragEndIndex);
         }
         
         this.isDragging = false;
@@ -147,7 +144,7 @@ export class DragHandler {
         
         // Trigger board re-render after drag operations
         if (this.onDragComplete) {
-            this.onDragComplete();
+            this.onDragComplete(boardChanged);
         }
     }
     
@@ -155,12 +152,14 @@ export class DragHandler {
         const startValue = this.gameState.getBlockValue(startIndex);
         const endValue = this.gameState.getBlockValue(endIndex);
         const isNeighbor = this.gameState.areNeighbors(startIndex, endIndex);
+        let boardChanged = false;
         
         if (endValue === 0) {
             // Moving to empty cell
             if (isNeighbor) {
                 this.gameState.placeBlock(endIndex, startValue);
                 this.gameState.removeBlock(startIndex);
+                boardChanged = true;
             }
         } else {
             // Merging with another block
@@ -172,12 +171,15 @@ export class DragHandler {
                 this.gameState.placeBlock(endIndex, mergedValue);
                 this.gameState.removeBlock(startIndex);
                 this.gameState.updateScore(mergedValue);
+                boardChanged = true;
             } else if (isNeighbor && sumValue % 2 === 0) {
                 const halfValue = sumValue / 2;
                 this.gameState.placeBlock(startIndex, halfValue);
                 this.gameState.placeBlock(endIndex, halfValue);
                 this.gameState.updateScore(halfValue * 2);
+                boardChanged = true;
             }
         }
+        return boardChanged;
     }
 }

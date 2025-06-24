@@ -176,8 +176,8 @@ h1 {
     border-radius: 6px;
     padding: var(--gap);
     box-sizing: border-box;
-    gap: var(--gap);
-    z-index: 1;
+    overflow: hidden;
+    z-index: 6;
 }
 
 #game-overlay {
@@ -187,30 +187,6 @@ h1 {
     width: 100%;
     height: 100%;
     z-index: 0;
-    pointer-events: none;
-}
-
-.spawn-indicator {
-    position: absolute;
-    border-radius: 50%;
-    animation: swirl 1.2s ease-in-out infinite;
-    z-index: 2;
-    background: radial-gradient(circle, rgba(255,255,255,0) 0%, rgba(46,204,113,0.3) 40%, rgba(46,204,113,0) 70%);
-}
-
-@keyframes swirl {
-    0% {
-        transform: rotate(0deg) scale(0.9);
-        opacity: 0.8;
-    }
-    50% {
-        transform: rotate(180deg) scale(1);
-        opacity: 1;
-    }
-    100% {
-        transform: rotate(360deg) scale(0.9);
-        opacity: 0.8;
-    }
 }
 
 .grid-cell {
@@ -249,6 +225,34 @@ h1 {
     }
     50% {
         opacity: 0.5;
+    }
+}
+
+.spawn-indicator {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.spawn-indicator::before {
+    content: '';
+    box-sizing: border-box;
+    width: 60%;
+    height: 60%;
+    border: 6px solid rgba(119, 110, 101, 0.4);
+    border-top-color: #776e65;
+    border-radius: 50%;
+    animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
     }
 }
 

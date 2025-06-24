@@ -19,7 +19,7 @@ export class GameState {
         this.currentDifficulty = 'easy';
         this.theme = null;
         this.blockImages = {};
-        this.upcomingSpawns = [];
+        this.nextSpawnIndices = [];
     }
     
     initializeGame(difficulty, theme) {
@@ -31,7 +31,7 @@ export class GameState {
         this.score = 0;
         this.selectedBlockIndex = -1;
         this.boardState = new Array(this.gridSize * this.gridSize).fill(0);
-        this.upcomingSpawns = [];
+        this.nextSpawnIndices = [];
         return config;
     }
     

@@ -3,7 +3,6 @@ export class BoardRenderer {
     constructor(gameState, gameBoard, dragHandler, onBlockClick, onEmptyCellClick) {
         this.gameState = gameState;
         this.gameBoard = gameBoard;
-        this.gameOverlay = document.getElementById('game-overlay');
         this.dragHandler = dragHandler;
         this.onBlockClick = onBlockClick;
         this.onEmptyCellClick = onEmptyCellClick;
@@ -27,6 +26,10 @@ export class BoardRenderer {
                 this.createBlock(i, cellSize, gap);
             }
         }
+        
+        this.gameState.nextSpawnIndices.forEach(index => {
+            this.createSpawnIndicator(index, cellSize, gap);
+        });
     }
     
     createGridCell(index) {
@@ -36,6 +39,22 @@ export class BoardRenderer {
             this.onEmptyCellClick(index);
         });
         this.gameBoard.appendChild(cell);
+    }
+    
+    createSpawnIndicator(index, cellSize, gap) {
+        const indicator = document.createElement('div');
+        indicator.classList.add('spawn-indicator');
+        indicator.dataset.index = index;
+        
+        const row = Math.floor(index / this.gameState.gridSize);
+        const col = index % this.gameState.gridSize;
+        
+        indicator.style.width = `${cellSize}px`;
+        indicator.style.height = `${cellSize}px`;
+        indicator.style.top = `${gap + row * (cellSize + gap)}px`;
+        indicator.style.left = `${gap + col * (cellSize + gap)}px`;
+
+        this.gameBoard.appendChild(indicator);
     }
     
     createBlock(index, cellSize, gap) {
@@ -152,34 +171,5 @@ export class BoardRenderer {
             document.addEventListener('touchmove', touchMove);
             document.addEventListener('touchend', touchEnd);
         });
-    }
-
-    showSpawnAnimations(spawnIndices) {
-        this.clearSpawnAnimations();
-        
-        const boardSize = this.gameBoard.clientWidth;
-        const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
-        const cellSize = (boardSize - (this.gameState.gridSize + 1) * gap) / this.gameState.gridSize;
-
-        for (const index of spawnIndices) {
-            const indicator = document.createElement('div');
-            indicator.classList.add('spawn-indicator');
-
-            const row = Math.floor(index / this.gameState.gridSize);
-            const col = index % this.gameState.gridSize;
-
-            indicator.style.width = `${cellSize}px`;
-            indicator.style.height = `${cellSize}px`;
-            indicator.style.top = `${gap + row * (cellSize + gap)}px`;
-            indicator.style.left = `${gap + col * (cellSize + gap)}px`;
-
-            this.gameOverlay.appendChild(indicator);
-        }
-    }
-
-    clearSpawnAnimations() {
-        if (this.gameOverlay) {
-            this.gameOverlay.innerHTML = '';
-        }
     }
 }

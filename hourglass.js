@@ -9,10 +9,12 @@ export class HourglassManager {
         this.render = null;
         this.checkInterval = null;
         this.onSandFallComplete = null;
+        this.onProgressUpdate = null;
     }
     
-    create(numGrains, onSandFallComplete) {
+    create(numGrains, onSandFallComplete, onProgressUpdate) {
         this.onSandFallComplete = onSandFallComplete;
+        this.onProgressUpdate = onProgressUpdate;
         this.canvas = document.getElementById('hourglass-canvas');
         this.engine = Matter.Engine.create();
         this.world = this.engine.world;
@@ -163,6 +165,11 @@ export class HourglassManager {
 
             const bottomGrains = this.sandGrains.filter(grain => grain.position.y > 140);
             
+            if (this.onProgressUpdate && this.sandGrains.length > 0) {
+                const progress = bottomGrains.length / this.sandGrains.length;
+                this.onProgressUpdate(progress);
+            }
+            
             if (bottomGrains.length === this.sandGrains.length) {
                 if (this.onSandFallComplete) {
                     this.onSandFallComplete();
@@ -181,6 +188,8 @@ export class HourglassManager {
 
         const config = this.gameState.GAME_CONFIG[this.gameState.currentDifficulty];
         this.createSandGrains(config.sandGrains);
+        
+        this.checkInterval = null;
     }
     
     destroy() {
@@ -201,5 +210,6 @@ export class HourglassManager {
         
         this.world = null;
         this.sandGrains = [];
+        this.onProgressUpdate = null;
     }
 }
