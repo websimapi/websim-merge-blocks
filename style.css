@@ -64,7 +64,7 @@ header.in-game {
 }
 
 #hourglass-flipper.flipped {
-    transform: rotateX(180deg);
+    transform: rotateZ(180deg);
 }
 
 #hourglass-svg {
