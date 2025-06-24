@@ -32,9 +32,33 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function spawnRandomBlock() {
+        let numToSpawn = 1;
+        const difficulty = gameState.currentDifficulty;
+
+        if (difficulty === 'medium') {
+            if (Math.random() < 0.5) {
+                numToSpawn = 2;
+            }
+        } else if (difficulty === 'hard') {
+            if (Math.random() < 0.9) { // 90% chance for 2 or 3 blocks
+                if (Math.random() < 0.5) { // 50% of the 90% for 3 blocks
+                    numToSpawn = 3;
+                } else {
+                    numToSpawn = 2;
+                }
+            } else { // 10% chance for 1 block
+                numToSpawn = 1;
+            }
+        }
+        
         const emptyCells = gameState.getEmptyCells();
-        if (emptyCells.length === 0) {
-            if (gameState.currentDifficulty === 'zen') {
+        const availableSlots = emptyCells.length;
+
+        // Cap the number of blocks to spawn by the number of available slots
+        const actualNumToSpawn = Math.min(numToSpawn, availableSlots);
+
+        if (actualNumToSpawn === 0) {
+            if (difficulty === 'zen') {
                 console.log("Grid full in Zen mode - continuing without spawning");
                 hourglassManager.reset();
                 return;
@@ -44,8 +68,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         }
-        const randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-        gameState.placeBlock(randomIndex, gameState.getNewBlockValue());
+
+        // Spawn the blocks
+        for (let i = 0; i < actualNumToSpawn; i++) {
+            const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
+            const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
+            gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
+        }
+
         boardRenderer.render();
     }
 
