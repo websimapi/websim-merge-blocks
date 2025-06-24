@@ -319,8 +319,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sandGrains = [];
         for (let i = 0; i < numGrains; i++) {
             const grain = Matter.Bodies.circle(
-                20 + Math.random() * 80, 
-                20 + Math.random() * 60, 
+                25 + Math.random() * 70, 
+                25 + Math.random() * 40, 
                 1.5, 
                 {
                     render: { fillStyle: '#F4A460' },
@@ -378,8 +378,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sandGrains = [];
         for (let i = 0; i < config.sandGrains; i++) {
             const grain = Matter.Bodies.circle(
-                20 + Math.random() * 80, 
-                20 + Math.random() * 60, 
+                25 + Math.random() * 70, 
+                25 + Math.random() * 40, 
                 1.5, 
                 {
                     render: { fillStyle: '#F4A460' },
