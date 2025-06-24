@@ -174,7 +174,6 @@ export class DragHandler {
             if (isNeighbor) {
                 this.gameState.placeBlock(endIndex, startValue);
                 this.gameState.removeBlock(startIndex);
-                // Note: Replay recording happens in the calling function
                 boardChanged = true;
             }
         } else {
@@ -187,14 +186,12 @@ export class DragHandler {
                 this.gameState.placeBlock(endIndex, mergedValue);
                 this.gameState.removeBlock(startIndex);
                 this.gameState.updateScore(mergedValue);
-                // Note: Replay recording happens in the calling function
                 boardChanged = true;
             } else if (isNeighbor && sumValue % 2 === 0) {
                 const halfValue = sumValue / 2;
                 this.gameState.placeBlock(startIndex, halfValue);
                 this.gameState.placeBlock(endIndex, halfValue);
                 this.gameState.updateScore(halfValue * 2);
-                // Note: Replay recording happens in the calling function
                 boardChanged = true;
             }
         }

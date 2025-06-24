@@ -29,15 +29,15 @@ export class HourglassManager {
             this.engine.world.gravity.y = 0.233;
         }
         
-        this.canvas.width = 120;
-        this.canvas.height = 200;
+        this.canvas.width = 150;
+        this.canvas.height = 250;
         
         this.render = Matter.Render.create({
             canvas: this.canvas,
             engine: this.engine,
             options: {
-                width: 120,
-                height: 200,
+                width: 150,
+                height: 250,
                 wireframes: false,
                 background: 'transparent',
                 showAngleIndicator: false,
@@ -55,45 +55,45 @@ export class HourglassManager {
     }
     
     createHourglassStructure() {
-        const wallThickness = 4;
-        const centerX = 60;
-        const centerY = 100;
+        const wallThickness = 5;
+        const centerX = 75;
+        const centerY = 125;
         
         const walls = [
             // Outer walls
-            Matter.Bodies.rectangle(centerX, 10, 100, wallThickness, { 
+            Matter.Bodies.rectangle(centerX, 12, 125, wallThickness, { 
                 isStatic: true, 
                 render: { fillStyle: '#8B4513' },
                 friction: 0.1,
                 frictionStatic: 0.1
             }),
-            Matter.Bodies.rectangle(centerX, 190, 100, wallThickness, { 
+            Matter.Bodies.rectangle(centerX, 238, 125, wallThickness, { 
                 isStatic: true, 
                 render: { fillStyle: '#8B4513' },
                 friction: 0.1,
                 frictionStatic: 0.1
             }),
-            Matter.Bodies.rectangle(10, centerY, wallThickness, 200, { 
+            Matter.Bodies.rectangle(12, centerY, wallThickness, 250, { 
                 isStatic: true, 
                 render: { fillStyle: '#8B4513' },
                 friction: 0.1,
                 frictionStatic: 0.1
             }),
-            Matter.Bodies.rectangle(110, centerY, wallThickness, 200, { 
+            Matter.Bodies.rectangle(138, centerY, wallThickness, 250, { 
                 isStatic: true, 
                 render: { fillStyle: '#8B4513' },
                 friction: 0.1,
                 frictionStatic: 0.1
             }),
             // Top funnel
-            Matter.Bodies.rectangle(30, 75, 60, wallThickness, { 
+            Matter.Bodies.rectangle(37, 94, 75, wallThickness, { 
                 isStatic: true, 
                 angle: Math.PI / 6,
                 render: { fillStyle: '#8B4513' },
                 friction: 0.1,
                 frictionStatic: 0.1
             }),
-            Matter.Bodies.rectangle(90, 75, 60, wallThickness, { 
+            Matter.Bodies.rectangle(113, 94, 75, wallThickness, { 
                 isStatic: true, 
                 angle: -Math.PI / 6,
                 render: { fillStyle: '#8B4513' },
@@ -101,14 +101,14 @@ export class HourglassManager {
                 frictionStatic: 0.1
             }),
             // Bottom funnel
-            Matter.Bodies.rectangle(30, 125, 60, wallThickness, { 
+            Matter.Bodies.rectangle(37, 156, 75, wallThickness, { 
                 isStatic: true, 
                 angle: -Math.PI / 6,
                 render: { fillStyle: '#8B4513' },
                 friction: 0.1,
                 frictionStatic: 0.1
             }),
-            Matter.Bodies.rectangle(90, 125, 60, wallThickness, { 
+            Matter.Bodies.rectangle(113, 156, 75, wallThickness, { 
                 isStatic: true, 
                 angle: Math.PI / 6,
                 render: { fillStyle: '#8B4513' },
@@ -116,14 +116,14 @@ export class HourglassManager {
                 frictionStatic: 0.1
             }),
             // Center opening
-            Matter.Bodies.rectangle(55, centerY, wallThickness, 24, { 
+            Matter.Bodies.rectangle(69, centerY, wallThickness, 30, { 
                 isStatic: true, 
                 render: { fillStyle: '#8B4513' },
                 friction: 0.1,
                 frictionStatic: 0.1,
                 chamfer: { radius: 2 }
             }),
-            Matter.Bodies.rectangle(65, centerY, wallThickness, 24, { 
+            Matter.Bodies.rectangle(81, centerY, wallThickness, 30, { 
                 isStatic: true, 
                 render: { fillStyle: '#8B4513' },
                 friction: 0.1,
@@ -139,9 +139,9 @@ export class HourglassManager {
         this.sandGrains = [];
         for (let i = 0; i < numGrains; i++) {
             const grain = Matter.Bodies.circle(
-                25 + Math.random() * 70, 
-                25 + Math.random() * 40, 
-                2.5,
+                31 + Math.random() * 88, 
+                31 + Math.random() * 50, 
+                3,
                 {
                     render: { fillStyle: '#F4A460' },
                     restitution: 0.3,
@@ -163,7 +163,7 @@ export class HourglassManager {
                 return;
             }
 
-            const bottomGrains = this.sandGrains.filter(grain => grain.position.y > 140);
+            const bottomGrains = this.sandGrains.filter(grain => grain.position.y > 175);
             
             if (this.onProgressUpdate && this.sandGrains.length > 0) {
                 const progress = bottomGrains.length / this.sandGrains.length;

@@ -34,10 +34,6 @@ export class GameState {
         this.nextSpawnIndices = [];
         return config;
     }
-
-    getInitialBoardState() {
-        return [...this.boardState];
-    }
     
     getNewBlockValue() {
         const rand = Math.random();
