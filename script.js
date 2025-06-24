@@ -219,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Step 1 & 2: Get descriptions
-            const descriptionPrompt = `Describe this image of a "${gameState.theme}" icon in detail for an image generation AI. Focus on style, color, and key visual elements.`;
+            const descriptionPrompt = `List the key visual elements of this image of a "${gameState.theme}" icon.`;
             const [desc1Completion, desc2Completion] = await Promise.all([
                 websim.chat.completions.create({ messages: [{ role: 'user', content: [{ type: 'text', text: descriptionPrompt }, { type: 'image_url', image_url: { url: imageUrl1 }}]}] }),
                 websim.chat.completions.create({ messages: [{ role: 'user', content: [{ type: 'text', text: descriptionPrompt }, { type: 'image_url', image_url: { url: imageUrl2 }}]}] })
@@ -228,12 +228,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const desc1 = desc1Completion.content;
             const desc2 = desc2Completion.content;
 
-            // Step 3: Combine descriptions
-            const combinePrompt = `Combine these two image descriptions into a single, coherent prompt for a new image generation. The new image should be a creative fusion of the two original concepts. The theme is "${gameState.theme}". The final prompt should start with "A cute, simple icon of...". Don't mention the original items. Just describe the new fused item.
-Description 1: ${desc1}
-Description 2: ${desc2}`;
-            const combinedDescCompletion = await websim.chat.completions.create({ messages: [{ role: 'user', content: combinePrompt }] });
-            const finalPrompt = combinedDescCompletion.content;
+            // Step 3: Combine descriptions using JSON mode
+            const combinePrompt = `Combine the visual elements from the two descriptions below into a single, new concept. The theme is "${gameState.theme}". Create a new prompt for an image generation AI that describes this fused concept. The prompt must start with "A cute, simple icon of...".
+            
+Description 1 Elements: ${desc1}
+Description 2 Elements: ${desc2}
+
+Respond with JSON following this schema:
+{ "prompt": string }`;
+
+            const combinedDescCompletion = await websim.chat.completions.create({
+                messages: [{ role: 'user', content: combinePrompt }],
+                json: true,
+            });
+
+            const resultData = JSON.parse(combinedDescCompletion.content);
+            const finalPrompt = resultData.prompt;
 
             // Step 4: Generate new image
             const result = await websim.imageGen({
