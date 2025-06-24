@@ -186,6 +186,9 @@ export class HourglassManager {
             Matter.World.remove(this.world, grain);
         });
 
+        // If grains were not all cleared (e.g. destroy was called mid-fall)
+        this.sandGrains = []; 
+
         const config = this.gameState.GAME_CONFIG[this.gameState.currentDifficulty];
         this.createSandGrains(config.sandGrains);
         
@@ -200,6 +203,8 @@ export class HourglassManager {
         
         if (this.render) {
             Matter.Render.stop(this.render);
+            this.render.canvas.remove();
+            this.render.textures = {};
             this.render = null;
         }
         

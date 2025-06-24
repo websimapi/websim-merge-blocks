@@ -20,6 +20,8 @@ export class GameState {
         this.theme = null;
         this.blockImages = {};
         this.nextSpawnIndices = [];
+        this.seededBlockValues = [];
+        this.seededBlockIndex = 0;
     }
     
     initializeGame(difficulty, theme) {
@@ -32,10 +34,30 @@ export class GameState {
         this.selectedBlockIndex = -1;
         this.boardState = new Array(this.gridSize * this.gridSize).fill(0);
         this.nextSpawnIndices = [];
+        this.seededBlockValues = [];
+        this.seededBlockIndex = 0;
         return config;
+    }
+
+    setSeed(history) {
+        this.blockImages = history.images || {};
+        this.boardState = [...history.initialBoard];
+        
+        // Extract all spawned values from the actions
+        this.seededBlockValues = history.actions
+            .filter(action => action.type === 'spawn')
+            .map(action => action.value);
+        
+        this.seededBlockIndex = 0;
     }
     
     getNewBlockValue() {
+        if (this.seededBlockValues.length > 0 && this.seededBlockIndex < this.seededBlockValues.length) {
+            const value = this.seededBlockValues[this.seededBlockIndex];
+            this.seededBlockIndex++;
+            return value;
+        }
+
         const rand = Math.random();
 
         if (this.score < 100) {

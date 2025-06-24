@@ -4,11 +4,13 @@ import { HourglassManager } from './hourglass.js';
 import { DragHandler } from './drag-handler.js';
 import { BoardRenderer } from './board-renderer.js';
 import { CombinationsDisplay } from './combinations-display.js';
+import { GameHistory } from './game-history.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM elements
     const titleScreen = document.getElementById('title-screen');
     const gameScreen = document.getElementById('game-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
     const gameBoard = document.getElementById('game-board');
     const homeBtn = document.getElementById('home-btn');
     const gameOverlay = document.getElementById('game-overlay');
@@ -16,6 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
     const themeInput = document.getElementById('theme-input');
     const combinationsContainer = document.getElementById('combinations-container');
+    const finalScoreEl = document.getElementById('final-score');
+    const watchReplayBtn = document.getElementById('watch-replay-btn');
+    const playSeededBtn = document.getElementById('play-seeded-btn');
+    const mainMenuBtn = document.getElementById('main-menu-btn');
+    const replayControls = document.getElementById('replay-controls');
+    const replayStatus = document.getElementById('replay-status');
+    const exitReplayBtn = document.getElementById('exit-replay-btn');
 
     const levelDescriptors = [
         "a basic", "an improved", "an advanced", "a superior", "a masterful", 
@@ -26,6 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Game modules
     const gameState = new GameState();
     const hourglassManager = new HourglassManager(gameState);
+    const gameHistory = new GameHistory();
+    let isReplaying = false;
+
     const dragHandler = new DragHandler(gameState, gameBoard);
     const combinationsDisplay = new CombinationsDisplay(gameState);
     const boardRenderer = new BoardRenderer(
@@ -41,8 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Set up drag completion callback
-    dragHandler.onDragComplete = (boardChanged) => {
-        if (boardChanged) {
+    dragHandler.onDragComplete = (result) => {
+        if (result && result.changed) {
+            gameHistory.recordAction(result);
             boardRenderer.renderBlocks();
             checkAllBlockImages();
             combinationsDisplay.update();
@@ -109,7 +122,9 @@ document.addEventListener('DOMContentLoaded', () => {
         spawnIndices.forEach(boardIndex => {
             // Only spawn if the index is still in the queue (wasn't spawned early)
             if (gameState.nextSpawnIndices.includes(boardIndex)) {
-                gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
+                const newValue = gameState.getNewBlockValue();
+                gameState.placeBlock(boardIndex, newValue);
+                gameHistory.recordAction({ type: 'spawn', index: boardIndex, value: newValue });
             }
         });
         
@@ -123,12 +138,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function gameOver() {
         hourglassManager.destroy();
-        alert(`Game Over! Final Score: ${gameState.score}`);
-        showTitleScreen();
+        gameHistory.save('lastGameReplay');
+        finalScoreEl.textContent = `Final Score: ${gameState.score}`;
+        gameScreen.classList.remove('active');
+        gameOverScreen.classList.add('active');
     }
 
     function handleBlockClick(clickedIndex) {
-        if (dragHandler.isDragging) return;
+        if (isReplaying || dragHandler.isDragging) return;
         
         if (!gameState.hasSelectedBlock()) {
             gameState.selectBlock(clickedIndex);
@@ -149,9 +166,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const sameValue = selectedValue === clickedValue;
         const sumValue = selectedValue + clickedValue;
         let boardChanged = false;
+        let action = {};
 
         if (isNeighbor && sameValue) {
             const mergedValue = gameState.getBlockValue(clickedIndex) + 1;
+            action = { type: 'merge', from: selectedIndex, to: clickedIndex, value: mergedValue };
             gameState.placeBlock(clickedIndex, mergedValue);
             gameState.removeBlock(selectedIndex);
             gameState.updateScore(mergedValue);
@@ -159,6 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             boardChanged = true;
         } else if (isNeighbor && sumValue % 2 === 0) {
             const halfValue = sumValue / 2;
+            action = { type: 'split', from: selectedIndex, to: clickedIndex, value: halfValue };
             gameState.placeBlock(selectedIndex, halfValue);
             gameState.placeBlock(clickedIndex, halfValue);
             gameState.updateScore(halfValue * 2);
@@ -170,13 +190,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         boardRenderer.renderBlocks();
         if (boardChanged) {
+            gameHistory.recordAction(action);
             checkAllBlockImages();
             combinationsDisplay.update();
         }
     }
 
     function handleEmptyCellClick(clickedIndex) {
-        if (dragHandler.isDragging) return;
+        if (isReplaying || dragHandler.isDragging) return;
 
         const isIndicatorCell = gameState.nextSpawnIndices.includes(clickedIndex);
         if (isIndicatorCell) {
@@ -188,15 +209,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         let boardChanged = false;
+        let action = {};
 
         if (!gameState.hasSelectedBlock()) {
-            gameState.placeBlock(clickedIndex, gameState.getNewBlockValue());
+            const newValue = gameState.getNewBlockValue();
+            action = { type: 'spawn', index: clickedIndex, value: newValue };
+            gameState.placeBlock(clickedIndex, newValue);
             boardChanged = true;
         } else {
             const selectedIndex = gameState.getSelectedBlockIndex();
             const isNeighbor = gameState.areNeighbors(selectedIndex, clickedIndex);
 
             if (isNeighbor) {
+                action = { type: 'move', from: selectedIndex, to: clickedIndex };
                 gameState.placeBlock(clickedIndex, gameState.getBlockValue(selectedIndex));
                 gameState.removeBlock(selectedIndex);
                 gameState.deselectBlock();
@@ -209,18 +234,21 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.renderBlocks();
 
         if (boardChanged) {
+            gameHistory.recordAction(action);
             checkAllBlockImages();
             combinationsDisplay.update();
         }
     }
 
     function spawnEarly(index) {
-        if ((gameState.currentDifficulty !== 'easy' && gameState.currentDifficulty !== 'zen') || !gameState.nextSpawnIndices.includes(index)) {
+        if (isReplaying || (gameState.currentDifficulty !== 'easy' && gameState.currentDifficulty !== 'zen') || !gameState.nextSpawnIndices.includes(index)) {
             return;
         }
 
         // Place the new block
-        gameState.placeBlock(index, gameState.getNewBlockValue());
+        const newValue = gameState.getNewBlockValue();
+        gameState.placeBlock(index, newValue);
+        gameHistory.recordAction({ type: 'spawn', index, value: newValue });
 
         // Remove from the spawn queue
         const queueIndex = gameState.nextSpawnIndices.indexOf(index);
@@ -251,6 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 aspect: "square"
             });
             gameState.setImageForValue(value, result.url);
+            gameHistory.recordImage(value, result.url);
         } catch (error) {
             console.error(`Failed to generate image for value ${value}:`, error);
             // Revert status if generation fails
@@ -272,9 +301,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function startGame(difficulty) {
-        const theme = themeInput.value.trim() || null;
+    function startGame(difficulty, seedHistory = null) {
+        const theme = seedHistory ? seedHistory.theme : (themeInput.value.trim() || null);
         const config = gameState.initializeGame(difficulty, theme);
+        
+        if (seedHistory) {
+            gameState.setSeed(seedHistory);
+        }
+        
         hourglassManager.destroy();
 
         if (difficulty === 'hard') {
@@ -283,14 +317,28 @@ document.addEventListener('DOMContentLoaded', () => {
             combinationsContainer.style.display = 'block';
         }
 
-        // Spawn initial blocks without generating images for them yet
-        for (let i = 0; i < config.initialBlocks; i++) {
-             const emptyCells = gameState.getEmptyCells();
-             if (emptyCells.length > 0) {
-                const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
-                const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
-                gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
-             }
+        // Spawn initial blocks
+        if (!seedHistory) {
+             for (let i = 0; i < config.initialBlocks; i++) {
+                 const emptyCells = gameState.getEmptyCells();
+                 if (emptyCells.length > 0) {
+                    const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
+                    const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
+                    const newValue = gameState.getNewBlockValue();
+                    gameState.placeBlock(boardIndex, newValue);
+                 }
+            }
+        }
+
+        // Start history recording
+        gameHistory.start(difficulty, theme, gameState.boardState, gameState.blockImages);
+        // Record initial spawns if it's a new game
+        if (!seedHistory) {
+            gameState.boardState.forEach((value, index) => {
+                if (value > 0) {
+                    gameHistory.recordAction({ type: 'spawn', index, value });
+                }
+            });
         }
         
         // Now render, check for all images, and update combinations
@@ -300,6 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
         prepareNextSpawn();
 
         titleScreen.classList.remove('active');
+        gameOverScreen.classList.remove('active');
         gameScreen.classList.add('active');
         header.classList.add('in-game');
         
@@ -326,11 +375,86 @@ document.addEventListener('DOMContentLoaded', () => {
     function showTitleScreen() {
         titleScreen.classList.add('active');
         gameScreen.classList.remove('active');
+        gameOverScreen.classList.remove('active');
         header.classList.remove('in-game');
         gameBoard.innerHTML = '';
         hourglassManager.destroy();
         gameState.reset();
         combinationsContainer.style.display = 'block';
+    }
+
+    // --- REPLAY LOGIC ---
+    let replayTimeout;
+    function watchReplay() {
+        const history = gameHistory.load('lastGameReplay');
+        if (!history) {
+            alert("No replay data found!");
+            return;
+        }
+
+        isReplaying = true;
+        const config = gameState.initializeGame(history.difficulty, history.theme);
+        
+        // Setup initial state from history
+        gameState.boardState = [...history.initialBoard];
+        gameState.blockImages = history.images || {};
+        
+        // Display game
+        titleScreen.classList.remove('active');
+        gameOverScreen.classList.remove('active');
+        gameScreen.classList.add('active');
+        header.classList.add('in-game');
+        replayControls.classList.add('active');
+
+        // Render initial board
+        boardRenderer.render();
+        combinationsDisplay.update();
+
+        // Play actions
+        let actionIndex = 0;
+        const playNextAction = () => {
+            if (actionIndex >= history.actions.length) {
+                replayStatus.textContent = 'Replay Finished!';
+                isReplaying = false;
+                return;
+            }
+
+            const action = history.actions[actionIndex];
+            replayStatus.textContent = `Action ${actionIndex + 1} / ${history.actions.length}`;
+            
+            // Apply action to game state
+            switch (action.type) {
+                case 'spawn':
+                    gameState.placeBlock(action.index, action.value);
+                    break;
+                case 'move':
+                    gameState.placeBlock(action.to, gameState.getBlockValue(action.from));
+                    gameState.removeBlock(action.from);
+                    break;
+                case 'merge':
+                    gameState.placeBlock(action.to, action.value);
+                    gameState.removeBlock(action.from);
+                    break;
+                case 'split':
+                    gameState.placeBlock(action.from, action.value);
+                    gameState.placeBlock(action.to, action.value);
+                    break;
+            }
+            
+            boardRenderer.renderBlocks();
+            combinationsDisplay.update();
+
+            actionIndex++;
+            replayTimeout = setTimeout(playNextAction, 750);
+        };
+        playNextAction();
+    }
+
+    function exitReplay() {
+        clearTimeout(replayTimeout);
+        isReplaying = false;
+        replayControls.classList.remove('active');
+        showTitleScreen();
     }
 
     // Event listeners
@@ -341,22 +465,39 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     homeBtn.addEventListener('click', () => {
-        if (confirm('Are you sure you want to quit and return to the main menu? Your score will be lost.')) {
+        if (isReplaying || confirm('Are you sure you want to quit and return to the main menu? Your score will be lost.')) {
+            exitReplay();
             showTitleScreen();
         }
     });
 
     gameOverlay.addEventListener('click', () => {
+        if(isReplaying) return;
         gameState.deselectBlock();
         boardRenderer.renderBlocks();
     });
     
     document.addEventListener('click', (event) => {
+        if (isReplaying) return;
         if (gameScreen.classList.contains('active') && !gameBoard.contains(event.target) && !combinationsContainer.contains(event.target)) {
             gameState.deselectBlock();
             boardRenderer.renderBlocks();
         }
     });
+
+    watchReplayBtn.addEventListener('click', watchReplay);
+
+    playSeededBtn.addEventListener('click', () => {
+        const history = gameHistory.load('lastGameReplay');
+        if (history) {
+            startGame(history.difficulty, history);
+        } else {
+            alert("No game data found to play with!");
+        }
+    });
+
+    mainMenuBtn.addEventListener('click', showTitleScreen);
+    exitReplayBtn.addEventListener('click', exitReplay);
 
     window.addEventListener('resize', () => {
         if (gameScreen.classList.contains('active')) {

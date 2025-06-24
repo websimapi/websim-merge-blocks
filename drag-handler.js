@@ -162,11 +162,11 @@ export class DragHandler {
         const startValue = this.gameState.getBlockValue(startIndex);
         const endValue = this.gameState.getBlockValue(endIndex);
         const isNeighbor = this.gameState.areNeighbors(startIndex, endIndex);
-        let boardChanged = false;
+        let actionResult = { changed: false };
 
         const isTargetingIndicator = this.gameState.nextSpawnIndices.includes(endIndex);
         if (isTargetingIndicator && this.gameState.currentDifficulty !== 'easy' && this.gameState.currentDifficulty !== 'zen') {
-            return false; // Disallow interaction with indicators on non-easy/zen modes.
+            return actionResult; // Disallow interaction with indicators on non-easy/zen modes.
         }
         
         if (endValue === 0) {
@@ -174,7 +174,7 @@ export class DragHandler {
             if (isNeighbor) {
                 this.gameState.placeBlock(endIndex, startValue);
                 this.gameState.removeBlock(startIndex);
-                boardChanged = true;
+                actionResult = { changed: true, type: 'move', from: startIndex, to: endIndex };
             }
         } else {
             // Merging with another block
@@ -186,15 +186,15 @@ export class DragHandler {
                 this.gameState.placeBlock(endIndex, mergedValue);
                 this.gameState.removeBlock(startIndex);
                 this.gameState.updateScore(mergedValue);
-                boardChanged = true;
+                actionResult = { changed: true, type: 'merge', from: startIndex, to: endIndex, value: mergedValue };
             } else if (isNeighbor && sumValue % 2 === 0) {
                 const halfValue = sumValue / 2;
                 this.gameState.placeBlock(startIndex, halfValue);
                 this.gameState.placeBlock(endIndex, halfValue);
                 this.gameState.updateScore(halfValue * 2);
-                boardChanged = true;
+                actionResult = { changed: true, type: 'split', from: startIndex, to: endIndex, value: halfValue };
             }
         }
-        return boardChanged;
+        return actionResult;
     }
 }

@@ -165,6 +165,7 @@ h1 {
     position: relative;
     width: var(--board-size);
     height: var(--board-size);
+    margin-bottom: 20px; /* Space for replay controls */
 }
 
 #game-board {
@@ -178,6 +179,8 @@ h1 {
     box-sizing: border-box;
     overflow: hidden;
     z-index: 6;
+    transition: background-color 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 #game-overlay {
@@ -350,3 +353,63 @@ h1 {
 .combo-part.block-6 { background-color: #f65e3b; }
 .combo-part.block-7 { background-color: #edcf72; }
 .combo-part.block-8 { background-color: #edcc61; }
+
+#game-over-screen {
+    text-align: center;
+}
+
+#final-score {
+    font-size: 2rem;
+    color: var(--font-color-dark);
+    margin-bottom: 30px;
+}
+
+.game-over-buttons button {
+    font-size: 1.2rem;
+    padding: 12px 24px;
+    margin: 8px;
+    cursor: pointer;
+    border: 2px solid var(--font-color-dark);
+    background-color: white;
+    color: var(--font-color-dark);
+    border-radius: 5px;
+    transition: background-color 0.2s, color 0.2s, transform 0.2s;
+}
+
+.game-over-buttons button:hover {
+    background-color: var(--font-color-dark);
+    color: white;
+    transform: translateY(-2px);
+}
+
+#replay-controls {
+    display: none; /* Hidden by default */
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 6px;
+    z-index: 100;
+    align-items: center;
+    gap: 15px;
+}
+
+#replay-controls.active {
+    display: flex;
+}
+
+#exit-replay-btn {
+    background: #e74c3c;
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#exit-replay-btn:hover {
+    background: #c0392b;
+}
