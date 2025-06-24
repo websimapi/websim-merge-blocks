@@ -274,35 +274,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         // Top funnel - angled walls that narrow toward center
-        const topFunnelLeft = Matter.Bodies.rectangle(35, 75, 60, wallThickness, { 
+        const topFunnelLeft = Matter.Bodies.rectangle(30, 75, 60, wallThickness, { 
             isStatic: true, 
             angle: Math.PI / 6, // 30 degrees
             render: { fillStyle: '#8B4513' }
         });
-        const topFunnelRight = Matter.Bodies.rectangle(85, 75, 60, wallThickness, { 
+        const topFunnelRight = Matter.Bodies.rectangle(90, 75, 60, wallThickness, { 
             isStatic: true, 
             angle: -Math.PI / 6, // -30 degrees
             render: { fillStyle: '#8B4513' }
         });
         
         // Bottom funnel - angled walls that widen from center
-        const bottomFunnelLeft = Matter.Bodies.rectangle(35, 125, 60, wallThickness, { 
+        const bottomFunnelLeft = Matter.Bodies.rectangle(30, 125, 60, wallThickness, { 
             isStatic: true, 
             angle: -Math.PI / 6, // -30 degrees
             render: { fillStyle: '#8B4513' }
         });
-        const bottomFunnelRight = Matter.Bodies.rectangle(85, 125, 60, wallThickness, { 
+        const bottomFunnelRight = Matter.Bodies.rectangle(90, 125, 60, wallThickness, { 
             isStatic: true, 
             angle: Math.PI / 6, // 30 degrees
             render: { fillStyle: '#8B4513' }
         });
         
         // Small opening at center - make hole larger and walls longer
-        const centerLeftWall = Matter.Bodies.rectangle(52, centerY, wallThickness, 16, { 
+        const centerLeftWall = Matter.Bodies.rectangle(50, centerY, wallThickness, 24, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' }
         });
-        const centerRightWall = Matter.Bodies.rectangle(68, centerY, wallThickness, 16, { 
+        const centerRightWall = Matter.Bodies.rectangle(70, centerY, wallThickness, 24, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' }
         });
