@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameScreen = document.getElementById('game-screen');
     const gameBoard = document.getElementById('game-board');
     const gameOverlay = document.getElementById('game-overlay');
-    const backButton = document.getElementById('back-btn');
     const header = document.querySelector('header');
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
 
@@ -155,8 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
             startGame(button.dataset.difficulty);
         });
     });
-    
-    backButton.addEventListener('click', showTitleScreen);
 
     gameOverlay.addEventListener('click', () => {
         gameState.deselectBlock();

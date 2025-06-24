@@ -30,7 +30,7 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 20px;
+    padding: 10px 0;
     visibility: hidden;
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
@@ -48,10 +48,6 @@ header.in-game {
     color: var(--font-color-light);
     padding: 5px 15px;
     border-radius: 5px;
-}
-
-#game-controls {
-    padding: 0;
 }
 
 .screen {
@@ -164,22 +160,6 @@ h1 {
     outline: 4px solid #2ecc71; /* Bright green */
     z-index: 20;
     transform: scale(1.05);
-}
-
-#back-btn {
-    margin-top: 20px;
-    font-size: 1rem;
-    padding: 8px 16px;
-    cursor: pointer;
-    border: 2px solid var(--font-color-dark);
-    background-color: white;
-    color: var(--font-color-dark);
-    border-radius: 5px;
-}
-
-#back-btn:hover {
-    background-color: var(--font-color-dark);
-    color: white;
 }
 
 /* Block Colors & Hover Outlines */
