@@ -19,12 +19,14 @@ export class GameState {
         this.currentDifficulty = 'easy';
         this.theme = null;
         this.blockImages = {};
+        this.upcomingSpawns = [];
     }
     
     initializeGame(difficulty, theme) {
         this.currentDifficulty = difficulty;
         this.theme = theme;
         this.blockImages = {};
+        this.upcomingSpawns = [];
         const config = this.GAME_CONFIG[difficulty];
         this.gridSize = config.gridSize;
         this.score = 0;
@@ -79,6 +81,16 @@ export class GameState {
         }
         return emptyCells;
     }
+
+    getEmptyCellsForSpawning() {
+        const emptyCells = [];
+        for (let i = 0; i < this.boardState.length; i++) {
+            if (this.boardState[i] === 0 && !this.isUpcomingSpawn(i)) {
+                emptyCells.push(i);
+            }
+        }
+        return emptyCells;
+    }
     
     updateScore(points) {
         this.score += points;
@@ -115,6 +127,22 @@ export class GameState {
     
     getSelectedBlockIndex() {
         return this.selectedBlockIndex;
+    }
+
+    setUpcomingSpawns(indices) {
+        this.upcomingSpawns = indices;
+    }
+
+    getUpcomingSpawns() {
+        return this.upcomingSpawns;
+    }
+
+    clearUpcomingSpawns() {
+        this.upcomingSpawns = [];
+    }
+    
+    isUpcomingSpawn(index) {
+        return this.upcomingSpawns.includes(index);
     }
 
     getImageForValue(value) {

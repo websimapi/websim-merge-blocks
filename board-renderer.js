@@ -21,7 +21,9 @@ export class BoardRenderer {
 
         for (let i = 0; i < this.gameState.gridSize * this.gameState.gridSize; i++) {
             this.createGridCell(i);
-            
+        }
+        
+        for (let i = 0; i < this.gameState.gridSize * this.gameState.gridSize; i++) {
             if (this.gameState.getBlockValue(i) !== 0) {
                 this.createBlock(i, cellSize, gap);
             }
@@ -31,6 +33,11 @@ export class BoardRenderer {
     createGridCell(index) {
         const cell = document.createElement('div');
         cell.classList.add('grid-cell');
+        
+        if (this.gameState.isUpcomingSpawn(index)) {
+            cell.classList.add('spawning');
+        }
+
         cell.addEventListener('click', () => {
             this.onEmptyCellClick(index);
         });
@@ -63,17 +70,19 @@ export class BoardRenderer {
             block.classList.add('selected');
         }
 
-        this.gameBoard.appendChild(block);
+        document.getElementById('game-board-wrapper').appendChild(block);
     }
     
     positionBlock(block, index, cellSize, gap) {
         const row = Math.floor(index / this.gameState.gridSize);
         const col = index % this.gameState.gridSize;
         
+        const boardPadding = parseFloat(getComputedStyle(this.gameBoard).paddingTop);
+
         block.style.width = `${cellSize}px`;
         block.style.height = `${cellSize}px`;
-        block.style.top = `${gap + row * (cellSize + gap)}px`;
-        block.style.left = `${gap + col * (cellSize + gap)}px`;
+        block.style.top = `${boardPadding + row * (cellSize + gap)}px`;
+        block.style.left = `${boardPadding + col * (cellSize + gap)}px`;
         block.style.fontSize = `${cellSize * 0.4}px`;
     }
     

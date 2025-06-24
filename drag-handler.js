@@ -151,6 +151,11 @@ export class DragHandler {
         const startValue = this.gameState.getBlockValue(startIndex);
         const endValue = this.gameState.getBlockValue(endIndex);
         const isNeighbor = this.gameState.areNeighbors(startIndex, endIndex);
+
+        // Prevent dropping on a cell that is about to spawn a block
+        if (this.gameState.isUpcomingSpawn(endIndex)) {
+            return;
+        }
         
         if (endValue === 0) {
             // Moving to empty cell
