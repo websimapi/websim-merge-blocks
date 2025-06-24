@@ -1,5 +1,3 @@
-import Matter from 'matter-js';
-
 document.addEventListener('DOMContentLoaded', () => {
     const titleScreen = document.getElementById('title-screen');
     const gameScreen = document.getElementById('game-screen');
@@ -12,9 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
 
     const GAME_CONFIG = {
-        easy: { gridSize: 4, initialBlocks: 2, spawnRate: 15000 },
-        medium: { gridSize: 5, initialBlocks: 5, spawnRate: 12000 },
-        hard: { gridSize: 6, initialBlocks: 6, spawnRate: 8000 },
+        easy: { gridSize: 4, initialBlocks: 2, sandGrains: 15 },
+        medium: { gridSize: 5, initialBlocks: 5, sandGrains: 20 },
+        hard: { gridSize: 6, initialBlocks: 6, sandGrains: 25 },
     };
 
     let gridSize = 0;
@@ -22,87 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let score = 0;
     let spawnInterval = null;
     let selectedBlockIndex = -1;
-
-    // --- Hourglass Physics Timer Setup ---
-    const { Engine, Render, Runner, World, Bodies, Body, Events } = Matter;
-    let engine, render, runner;
-    let grains = [];
-    let passedCount = 0;
-    const TOTAL_GRAINS = 100;
-    let hourglassCallback = null;
-
-    function initHourglass() {
-        // cleanup previous
-        if (engine) {
-            Runner.stop(runner);
-            Render.stop(render);
-            render.canvas.remove();
-            render.textures = {};
-            engine = render = runner = null;
-            grains = [];
-            passedCount = 0;
-        }
-        const container = document.getElementById('timer-container');
-        const width = container.clientWidth;
-        const height = container.clientHeight;
-        engine = Engine.create();
-        const world = engine.world;
-        render = Render.create({
-            element: container,
-            engine,
-            options: { width, height, wireframes: false, background: 'transparent' }
-        });
-        runner = Runner.create();
-        Runner.run(runner, engine);
-        Render.run(render);
-
-        // container boundaries
-        const thickness = 10;
-        const walls = [
-            Bodies.rectangle(width/2, -thickness/2, width, thickness, { isStatic: true }),
-            Bodies.rectangle(width/2, height+thickness/2, width, thickness, { isStatic: true }),
-            Bodies.rectangle(-thickness/2, height/2, thickness, height, { isStatic: true }),
-            Bodies.rectangle(width+thickness/2, height/2, thickness, height, { isStatic: true })
-        ];
-        World.add(world, walls);
-
-        // hourglass shape (two trapezoids)
-        const slope = 0.5;
-        const topHG = Bodies.trapezoid(width/2, height/4, width*0.8, height/2, slope, { isStatic: true, render: { fillStyle: 'transparent', strokeStyle: '#776e65', lineWidth: 2 } });
-        Body.rotate(topHG, Math.PI);
-        const bottomHG = Bodies.trapezoid(width/2, 3*height/4, width*0.8, height/2, slope, { isStatic: true, render: { fillStyle: 'transparent', strokeStyle: '#776e65', lineWidth: 2 } });
-        World.add(world, [topHG, bottomHG]);
-
-        // spawn sand grains
-        grains = [];
-        for (let i = 0; i < TOTAL_GRAINS; i++) {
-            const x = width/2 + (Math.random()*20 - 10);
-            const y = height/6 + Math.random()*20;
-            const grain = Bodies.circle(x, y, 2, { restitution: 0.1, friction: 0.005, density: 0.001, render: { fillStyle: '#F4D35E' } });
-            grain.passed = false;
-            grains.push(grain);
-        }
-        World.add(world, grains);
-
-        // track when last grain passes through the waist (y > height/2)
-        Events.on(engine, 'afterUpdate', () => {
-            for (const grain of grains) {
-                if (!grain.passed && grain.position.y > height/2) {
-                    grain.passed = true;
-                    passedCount++;
-                    if (passedCount === TOTAL_GRAINS) {
-                        onHourglassEnd();
-                    }
-                }
-            }
-        });
-    }
-
-    function onHourglassEnd() {
-        if (typeof hourglassCallback === 'function') {
-            hourglassCallback();
-        }
-    }
+    let hourglassEngine = null;
+    let hourglassWorld = null;
+    let sandGrains = [];
+    let hourglassCanvas = null;
+    let hourglassRender = null;
+    let currentDifficulty = 'easy';
 
     const getNewBlockValue = () => {
         // This function determines the value of a new block based on the score.
@@ -302,10 +225,189 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const createHourglass = (numGrains) => {
+        const canvas = document.getElementById('hourglass-canvas');
+        const engine = Matter.Engine.create();
+        const world = engine.world;
+        
+        // Set up canvas dimensions
+        canvas.width = 120;
+        canvas.height = 200;
+        
+        const render = Matter.Render.create({
+            canvas: canvas,
+            engine: engine,
+            options: {
+                width: 120,
+                height: 200,
+                wireframes: false,
+                background: 'transparent',
+                showAngleIndicator: false,
+                showVelocity: false
+            }
+        });
+
+        // Create hourglass shape
+        const wallThickness = 4;
+        const centerX = 60;
+        const centerY = 100;
+        
+        // Top chamber walls
+        const topLeftWall = Matter.Bodies.rectangle(20, 60, wallThickness, 80, { 
+            isStatic: true, 
+            render: { fillStyle: '#8B4513' }
+        });
+        const topRightWall = Matter.Bodies.rectangle(100, 60, wallThickness, 80, { 
+            isStatic: true, 
+            render: { fillStyle: '#8B4513' }
+        });
+        const topWall = Matter.Bodies.rectangle(centerX, 20, 80, wallThickness, { 
+            isStatic: true, 
+            render: { fillStyle: '#8B4513' }
+        });
+        
+        // Bottom chamber walls
+        const bottomLeftWall = Matter.Bodies.rectangle(20, 140, wallThickness, 80, { 
+            isStatic: true, 
+            render: { fillStyle: '#8B4513' }
+        });
+        const bottomRightWall = Matter.Bodies.rectangle(100, 140, wallThickness, 80, { 
+            isStatic: true, 
+            render: { fillStyle: '#8B4513' }
+        });
+        const bottomWall = Matter.Bodies.rectangle(centerX, 180, 80, wallThickness, { 
+            isStatic: true, 
+            render: { fillStyle: '#8B4513' }
+        });
+        
+        // Funnel parts (angled walls)
+        const topFunnelLeft = Matter.Bodies.rectangle(45, 85, 30, wallThickness, { 
+            isStatic: true, 
+            angle: Math.PI / 4,
+            render: { fillStyle: '#8B4513' }
+        });
+        const topFunnelRight = Matter.Bodies.rectangle(75, 85, 30, wallThickness, { 
+            isStatic: true, 
+            angle: -Math.PI / 4,
+            render: { fillStyle: '#8B4513' }
+        });
+        
+        const bottomFunnelLeft = Matter.Bodies.rectangle(45, 115, 30, wallThickness, { 
+            isStatic: true, 
+            angle: -Math.PI / 4,
+            render: { fillStyle: '#8B4513' }
+        });
+        const bottomFunnelRight = Matter.Bodies.rectangle(75, 115, 30, wallThickness, { 
+            isStatic: true, 
+            angle: Math.PI / 4,
+            render: { fillStyle: '#8B4513' }
+        });
+
+        // Add walls to world
+        Matter.World.add(world, [
+            topLeftWall, topRightWall, topWall,
+            bottomLeftWall, bottomRightWall, bottomWall,
+            topFunnelLeft, topFunnelRight,
+            bottomFunnelLeft, bottomFunnelRight
+        ]);
+
+        // Create sand grains
+        sandGrains = [];
+        for (let i = 0; i < numGrains; i++) {
+            const grain = Matter.Bodies.circle(
+                30 + Math.random() * 60, 
+                30 + Math.random() * 40, 
+                2, 
+                {
+                    render: { fillStyle: '#F4A460' },
+                    restitution: 0.3,
+                    friction: 0.8
+                }
+            );
+            sandGrains.push(grain);
+            Matter.World.add(world, grain);
+        }
+
+        // Start the physics engine
+        Matter.Engine.run(engine);
+        Matter.Render.run(render);
+
+        // Store references
+        hourglassEngine = engine;
+        hourglassWorld = world;
+        hourglassCanvas = canvas;
+        hourglassRender = render;
+
+        // Check for sand falling through
+        checkSandFall();
+    };
+
+    const checkSandFall = () => {
+        const checkInterval = setInterval(() => {
+            if (!hourglassEngine) {
+                clearInterval(checkInterval);
+                return;
+            }
+
+            // Count sand grains in bottom chamber (y > 120)
+            const bottomGrains = sandGrains.filter(grain => grain.position.y > 120);
+            
+            // If all grains are in bottom chamber, spawn new block and reset
+            if (bottomGrains.length === sandGrains.length) {
+                spawnRandomBlock();
+                resetHourglass();
+            }
+        }, 100);
+    };
+
+    const resetHourglass = () => {
+        if (!hourglassWorld) return;
+
+        // Remove all sand grains
+        sandGrains.forEach(grain => {
+            Matter.World.remove(hourglassWorld, grain);
+        });
+
+        // Create new sand grains in top chamber
+        const config = GAME_CONFIG[currentDifficulty];
+        sandGrains = [];
+        for (let i = 0; i < config.sandGrains; i++) {
+            const grain = Matter.Bodies.circle(
+                30 + Math.random() * 60, 
+                30 + Math.random() * 40, 
+                2, 
+                {
+                    render: { fillStyle: '#F4A460' },
+                    restitution: 0.3,
+                    friction: 0.8
+                }
+            );
+            sandGrains.push(grain);
+            Matter.World.add(hourglassWorld, grain);
+        }
+    };
+
+    const destroyHourglass = () => {
+        if (hourglassRender) {
+            Matter.Render.stop(hourglassRender);
+            hourglassRender = null;
+        }
+        if (hourglassEngine) {
+            Matter.Engine.clear(hourglassEngine);
+            hourglassEngine = null;
+        }
+        hourglassWorld = null;
+        sandGrains = [];
+    };
+
     const startGame = (difficulty) => {
+        currentDifficulty = difficulty;
         const config = GAME_CONFIG[difficulty];
         gridSize = config.gridSize;
         
+        // Clear any existing hourglass
+        destroyHourglass();
+
         // Clear any existing game interval
         if (spawnInterval) {
             clearInterval(spawnInterval);
@@ -328,20 +430,15 @@ document.addEventListener('DOMContentLoaded', () => {
         gameScreen.classList.add('active');
         header.classList.add('in-game');
         
-        // Start spawning blocks periodically
-        spawnInterval = setInterval(spawnRandomBlock, config.spawnRate); // Spawn a new block based on difficulty
+        // Create hourglass timer
+        setTimeout(() => {
+            createHourglass(config.sandGrains);
+        }, 100);
 
         // Delay rendering to allow screen transition and correct board size calculation
         requestAnimationFrame(() => {
              renderBoard();
         });
-
-        // initialize hourglass timer callback & physics
-        hourglassCallback = () => {
-            alert("Time's up!");
-            showTitleScreen();
-        };
-        initHourglass();
     };
     
     const showTitleScreen = () => {
@@ -349,11 +446,8 @@ document.addEventListener('DOMContentLoaded', () => {
         gameScreen.classList.remove('active');
         header.classList.remove('in-game');
         gameBoard.innerHTML = '';
-        // Stop spawning blocks when returning to menu
-        if (spawnInterval) {
-            clearInterval(spawnInterval);
-            spawnInterval = null;
-        }
+        // Destroy hourglass when returning to menu
+        destroyHourglass();
         selectedBlockIndex = -1; // Reset selection
     }
 
