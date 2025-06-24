@@ -298,11 +298,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         // Small opening at center - make hole larger and walls longer
-        const centerLeftWall = Matter.Bodies.rectangle(50, centerY, wallThickness, 24, { 
+        const centerLeftWall = Matter.Bodies.rectangle(52, centerY, wallThickness, 24, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' }
         });
-        const centerRightWall = Matter.Bodies.rectangle(70, centerY, wallThickness, 24, { 
+        const centerRightWall = Matter.Bodies.rectangle(68, centerY, wallThickness, 24, { 
             isStatic: true, 
             render: { fillStyle: '#8B4513' }
         });
