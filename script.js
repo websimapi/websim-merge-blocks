@@ -166,9 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let boardChanged = false;
 
         if (!gameState.hasSelectedBlock()) {
-            // This action is disabled for now to prevent accidental empty cell clicks
-            // gameState.placeBlock(clickedIndex, gameState.getNewBlockValue());
-            // boardChanged = true;
+            gameState.placeBlock(clickedIndex, gameState.getNewBlockValue());
+            boardChanged = true;
         } else {
             const selectedIndex = gameState.getSelectedBlockIndex();
             const isNeighbor = gameState.areNeighbors(selectedIndex, clickedIndex);
