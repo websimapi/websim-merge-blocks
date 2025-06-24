@@ -341,12 +341,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const grain = Matter.Bodies.circle(
                 25 + Math.random() * 70, 
                 25 + Math.random() * 40, 
-                1.5, 
+                2.5, // Increased from 1.5 to 2.5
                 {
                     render: { fillStyle: '#F4A460' },
-                    restitution: 0.2,
-                    friction: 0.4,
-                    frictionAir: 0.01
+                    restitution: 0.3, // Increased restitution to help particles bounce apart
+                    friction: 0.3, // Reduced friction slightly
+                    frictionAir: 0.01,
+                    collisionFilter: {
+                        group: -1 // Negative group makes particles repel each other slightly
+                    }
                 }
             );
             sandGrains.push(grain);
@@ -400,12 +403,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const grain = Matter.Bodies.circle(
                 25 + Math.random() * 70, 
                 25 + Math.random() * 40, 
-                1.5, 
+                2.5, // Increased from 1.5 to 2.5
                 {
                     render: { fillStyle: '#F4A460' },
-                    restitution: 0.2,
-                    friction: 0.4,
-                    frictionAir: 0.01
+                    restitution: 0.3, // Increased restitution to help particles bounce apart
+                    friction: 0.3, // Reduced friction slightly
+                    frictionAir: 0.01,
+                    collisionFilter: {
+                        group: -1 // Negative group makes particles repel each other slightly
+                    }
                 }
             );
             sandGrains.push(grain);
