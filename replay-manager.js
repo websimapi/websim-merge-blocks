@@ -13,6 +13,7 @@ export class ReplayManager {
         };
         this.isReplaying = false;
         this.gameState = null; // Reference to game state for accurate tracking
+        this.room = new WebsimSocket();
     }
 
     startNewGame(difficulty, theme, initialBlocks) {
@@ -47,7 +48,6 @@ export class ReplayManager {
             timestamp: Date.now() - this.currentReplay.startTime
         };
         this.currentReplay.events.push(event);
-        this.saveToStorage();
     }
 
     recordMove(moveType, fromIndex, toIndex, fromValue, toValue, resultValue, scoreGained) {
@@ -80,50 +80,61 @@ export class ReplayManager {
         });
     }
 
-    finalizeGame(finalScore) {
-        this.recordEvent('game_end', {
-            finalScore: finalScore,
-            finalBoardState: [...this.gameState?.boardState]
-        });
-        this.currentReplay.finalScore = finalScore;
-        this.saveToStorage();
-    }
-
-    saveToStorage() {
+    async saveReplay() {
         try {
-            localStorage.setItem('mergeBlocksReplay', JSON.stringify(this.currentReplay));
+            // Calculate final score from replay events
+            let finalScore = 0;
+            this.currentReplay.events.forEach(event => {
+                if (event.type === 'move' && event.data.scoreGained) {
+                    finalScore += event.data.scoreGained;
+                }
+            });
+
+            const replayRecord = await this.room.collection('replay').create({
+                gameId: this.currentReplay.gameId,
+                theme: this.currentReplay.theme || 'Blocks',
+                difficulty: this.currentReplay.difficulty,
+                finalScore: finalScore,
+                events: JSON.stringify(this.currentReplay.events),
+                imageUrls: JSON.stringify(this.currentReplay.imageUrls),
+                startTime: this.currentReplay.startTime,
+                gridSize: this.currentReplay.gridSize || this.gameState?.gridSize
+            });
+            
+            console.log('Replay saved to database:', replayRecord);
         } catch (e) {
-            console.error('Failed to save replay to localStorage:', e);
+            console.error('Failed to save replay to database:', e);
         }
     }
 
-    loadFromStorage() {
+    async getAllReplays() {
         try {
-            const stored = localStorage.getItem('mergeBlocksReplay');
-            return stored ? JSON.parse(stored) : null;
+            return this.room.collection('replay').getList();
         } catch (e) {
-            console.error('Failed to load replay from localStorage:', e);
-            return null;
+            console.error('Failed to load replays from database:', e);
+            return [];
         }
     }
 
-    getStoredImageUrls() {
-        const replay = this.loadFromStorage();
-        return replay ? replay.imageUrls : {};
+    subscribeToReplays(callback) {
+        return this.room.collection('replay').subscribe(callback);
     }
 
-    async playReplay(gameState, boardRenderer, onReplayComplete) {
-        const replay = this.loadFromStorage();
-        if (!replay) {
-            console.error('No replay data found');
+    async playReplay(replayRecord, gameState, boardRenderer, onReplayComplete) {
+        if (!replayRecord) {
+            console.error('No replay record provided');
             return;
         }
 
         this.isReplaying = true;
         
+        // Parse replay data
+        const events = JSON.parse(replayRecord.events);
+        const imageUrls = JSON.parse(replayRecord.imageUrls);
+        
         // Reset game state to initial conditions
-        gameState.initializeGame(replay.difficulty, replay.theme);
-        gameState.blockImages = { ...replay.imageUrls };
+        gameState.initializeGame(replayRecord.difficulty, replayRecord.theme);
+        gameState.blockImages = { ...imageUrls };
         gameState.score = 0; // Reset score
         
         // Start with completely empty board
@@ -137,13 +148,13 @@ export class ReplayManager {
         const playbackSpeed = 3; // 3x speed
 
         const playNextEvent = () => {
-            if (eventIndex >= replay.events.length) {
+            if (eventIndex >= events.length) {
                 this.isReplaying = false;
                 if (onReplayComplete) onReplayComplete();
                 return;
             }
 
-            const event = replay.events[eventIndex];
+            const event = events[eventIndex];
             const targetTime = startTime + (event.timestamp / playbackSpeed);
             const currentTime = Date.now();
 
@@ -195,11 +206,18 @@ export class ReplayManager {
             case 'image':
                 gameState.setImageForValue(event.data.value, event.data.url);
                 break;
-            case 'game_end':
-                console.log('Game ended with score:', event.data.finalScore);
-                break;
         }
         boardRenderer.renderBlocks();
+    }
+
+    getStoredImageUrls(replayRecord) {
+        if (!replayRecord) return {};
+        try {
+            return JSON.parse(replayRecord.imageUrls);
+        } catch (e) {
+            console.error('Failed to parse imageUrls from replay:', e);
+            return {};
+        }
     }
 
     clearReplay() {

@@ -154,8 +154,8 @@ document.addEventListener('DOMContentLoaded', () => {
         hourglassManager.destroy();
         finalScoreSpan.textContent = gameState.score;
         
-        // Finalize the replay with the final score
-        replayManager.finalizeGame(gameState.score);
+        // Save replay to database
+        replayManager.saveReplay();
         
         gameScreen.classList.remove('active');
         replayScreen.classList.add('active');
@@ -397,51 +397,98 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showReplayMenu() {
-        const storedReplay = replayManager.loadFromStorage();
-        
-        if (!storedReplay) {
-            noReplayMessage.style.display = 'block';
-            replayDetails.style.display = 'none';
-            watchReplayMenuBtn.style.display = 'none';
-            document.getElementById('continue-with-images-section').style.display = 'none';
-        } else {
-            noReplayMessage.style.display = 'none';
-            replayDetails.style.display = 'block';
-            watchReplayMenuBtn.style.display = 'block';
-            document.getElementById('continue-with-images-section').style.display = 'block';
-            
-            // Use stored final score if available, otherwise calculate from events
-            let finalScore = storedReplay.finalScore || 0;
-            if (!storedReplay.finalScore) {
-                storedReplay.events.forEach(event => {
-                    if (event.type === 'move' && event.data.scoreGained) {
-                        finalScore += event.data.scoreGained;
-                    }
-                });
-            }
-            
-            replayTheme.textContent = storedReplay.theme || 'Blocks';
-            replayDifficulty.textContent = storedReplay.difficulty;
-            replayFinalScore.textContent = finalScore;
-        }
-        
         titleScreen.classList.remove('active');
         replayMenuScreen.classList.add('active');
+        
+        // Show loading message
+        document.getElementById('loading-replays-message').style.display = 'block';
+        document.getElementById('replay-list').innerHTML = '';
+        
+        // Load replays from database
+        loadReplayGallery();
     }
 
-    // Event listeners
-    difficultyButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            startGame(button.dataset.difficulty);
+    let selectedReplayRecord = null;
+
+    function loadReplayGallery() {
+        const replayList = document.getElementById('replay-list');
+        const loadingMessage = document.getElementById('loading-replays-message');
+        
+        // Subscribe to replay updates
+        replayManager.subscribeToReplays((replays) => {
+            loadingMessage.style.display = 'none';
+            replayList.innerHTML = '';
+            
+            if (replays.length === 0) {
+                replayList.innerHTML = '<p style="text-align: center; color: #666;">No replays available yet. Play some games to create replays!</p>';
+                return;
+            }
+            
+            // Sort replays by final score (highest first)
+            const sortedReplays = [...replays].sort((a, b) => b.finalScore - a.finalScore);
+            
+            sortedReplays.forEach(replay => {
+                const replayItem = createReplayItem(replay);
+                replayList.appendChild(replayItem);
+            });
         });
-    });
+    }
+
+    function createReplayItem(replay) {
+        const item = document.createElement('div');
+        item.className = 'replay-item';
+        item.dataset.replayId = replay.id;
+        
+        const createdDate = new Date(replay.created_at).toLocaleDateString();
+        const difficultyColors = {
+            easy: '#2ecc71',
+            medium: '#f39c12', 
+            hard: '#e74c3c',
+            zen: '#9b59b6'
+        };
+        
+        item.innerHTML = `
+            <div class="replay-item-header">
+                <div class="replay-item-title">${replay.theme}</div>
+                <div class="replay-item-score">${replay.finalScore}</div>
+            </div>
+            <div class="replay-item-details">
+                <span style="color: ${difficultyColors[replay.difficulty] || '#666'}; font-weight: bold;">
+                    ${replay.difficulty.toUpperCase()}
+                </span>
+            </div>
+            <div class="replay-item-meta">
+                <span>By ${replay.username}</span>
+                <span>${createdDate}</span>
+            </div>
+        `;
+        
+        item.addEventListener('click', () => {
+            // Deselect all other items
+            document.querySelectorAll('.replay-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // Select this item
+            item.classList.add('selected');
+            selectedReplayRecord = replay;
+            
+            // Show action buttons
+            document.getElementById('watch-selected-replay-btn').style.display = 'block';
+            document.getElementById('continue-with-images-section').style.display = 'block';
+        });
+        
+        return item;
+    }
 
     // Replay menu event listeners
     replayMenuBtn.addEventListener('click', () => {
         showReplayMenu();
     });
 
-    watchReplayMenuBtn.addEventListener('click', () => {
+    document.getElementById('watch-selected-replay-btn').addEventListener('click', () => {
+        if (!selectedReplayRecord) return;
+        
         replayMenuBoardWrapper.style.display = 'block';
         replayMenuStatus.textContent = 'Playing Replay...';
         
@@ -453,18 +500,18 @@ document.addEventListener('DOMContentLoaded', () => {
             () => {}  // No empty cell click for replay
         );
 
-        replayManager.playReplay(gameState, replayMenuBoardRenderer, () => {
+        replayManager.playReplay(selectedReplayRecord, gameState, replayMenuBoardRenderer, () => {
             replayMenuStatus.textContent = 'Replay Complete!';
         });
     });
 
     continueDifficultyButtons.forEach(button => {
         button.addEventListener('click', () => {
-            const storedReplay = replayManager.loadFromStorage();
-            if (storedReplay) {
-                themeInput.value = storedReplay.theme || '';
-                startGame(button.dataset.difficulty, true);
-            }
+            if (!selectedReplayRecord) return;
+            
+            themeInput.value = selectedReplayRecord.theme || '';
+            gameState.blockImages = replayManager.getStoredImageUrls(selectedReplayRecord);
+            startGame(button.dataset.difficulty, true);
         });
     });
 
@@ -475,6 +522,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Replay event listeners
     watchReplayBtn.addEventListener('click', () => {
+        // Get the most recent replay for this user
+        const replays = replayManager.room.collection('replay').getList();
+        const userReplays = replays.filter(replay => replay.username === replayManager.room.getCurrentUser()?.username);
+        const mostRecentReplay = userReplays[userReplays.length - 1];
+        
+        if (!mostRecentReplay) return;
+        
         replayBoardWrapper.style.display = 'block';
         replayStatus.textContent = 'Playing Replay...';
         
@@ -486,21 +540,25 @@ document.addEventListener('DOMContentLoaded', () => {
             () => {}  // No empty cell click for replay
         );
 
-        replayManager.playReplay(gameState, replayBoardRenderer, () => {
+        replayManager.playReplay(mostRecentReplay, gameState, replayBoardRenderer, () => {
             replayStatus.textContent = 'Replay Complete!';
         });
     });
 
     restartWithImagesBtn.addEventListener('click', () => {
-        const storedReplay = replayManager.loadFromStorage();
-        if (storedReplay) {
-            themeInput.value = storedReplay.theme || '';
-            startGame(storedReplay.difficulty, true);
-        }
+        // Get the most recent replay for this user
+        const replays = replayManager.room.collection('replay').getList();
+        const userReplays = replays.filter(replay => replay.username === replayManager.room.getCurrentUser()?.username);
+        const mostRecentReplay = userReplays[userReplays.length - 1];
+        
+        if (!mostRecentReplay) return;
+        
+        themeInput.value = mostRecentReplay.theme || '';
+        gameState.blockImages = replayManager.getStoredImageUrls(mostRecentReplay);
+        startGame(mostRecentReplay.difficulty, true);
     });
 
     newGameBtn.addEventListener('click', () => {
-        replayManager.clearReplay();
         showTitleScreen();
     });
 

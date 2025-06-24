@@ -29,18 +29,14 @@
         </div>
         <div id="replay-menu-screen" class="screen">
             <div id="replay-menu-container">
-                <h2>Replay Menu</h2>
-                <div id="replay-info">
-                    <p id="no-replay-message" style="display: none;">No replay available. Play a game first!</p>
-                    <div id="replay-details" style="display: none;">
-                        <p><strong>Theme:</strong> <span id="replay-theme"></span></p>
-                        <p><strong>Difficulty:</strong> <span id="replay-difficulty"></span></p>
-                        <p><strong>Final Score:</strong> <span id="replay-final-score"></span></p>
-                    </div>
+                <h2>Replay Gallery</h2>
+                <div id="replay-gallery">
+                    <p id="loading-replays-message">Loading replays...</p>
+                    <div id="replay-list"></div>
                 </div>
                 <div id="replay-menu-controls">
-                    <button id="watch-replay-menu-btn">Watch Replay</button>
-                    <div id="continue-with-images-section">
+                    <button id="watch-selected-replay-btn" style="display: none;">Watch Selected Replay</button>
+                    <div id="continue-with-images-section" style="display: none;">
                         <h3>Continue with Same Images</h3>
                         <div class="difficulty-buttons">
                             <button class="continue-difficulty-btn" data-difficulty="easy">Easy</button>
