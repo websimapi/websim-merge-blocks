@@ -212,6 +212,10 @@ h1 {
     border-radius: 3px;
 }
 
+.block.themed {
+    background-color: #eee4da !important;
+}
+
 .block.loading {
     animation: pulse 1.5s infinite ease-in-out;
 }

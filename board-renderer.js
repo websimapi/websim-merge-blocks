@@ -45,6 +45,7 @@ export class BoardRenderer {
         const imageUrl = this.gameState.getImageForValue(value);
 
         if (this.gameState.theme && imageUrl) {
+            block.classList.add('themed');
             if (imageUrl === 'loading') {
                 block.textContent = '...';
                 block.classList.add('loading');

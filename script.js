@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const result = await websim.imageGen({
-                prompt: `A cute, simple icon of ${gameState.theme}, representing the number ${value}. sticker style, transparent background`,
+                prompt: `A cute, simple icon of a level ${value} ${gameState.theme}. Sticker style, simple, iconic, on a plain background.`,
                 transparent: true,
                 aspect: "square"
             });
