@@ -22,8 +22,9 @@ export class BoardRenderer {
         for (let i = 0; i < this.gameState.gridSize * this.gameState.gridSize; i++) {
             this.createGridCell(i);
             
-            if (this.gameState.getBlockValue(i) !== 0) {
-                this.createBlock(i, cellSize, gap);
+            const block = this.gameState.getBlock(i);
+            if (block !== null) {
+                this.createBlock(i, block, cellSize, gap);
             }
         }
     }
@@ -37,32 +38,32 @@ export class BoardRenderer {
         this.gameBoard.appendChild(cell);
     }
     
-    createBlock(index, cellSize, gap) {
-        const block = document.createElement('div');
-        const value = this.gameState.getBlockValue(index);
-        block.classList.add('block', `block-${value}`);
+    createBlock(index, block, cellSize, gap) {
+        const blockEl = document.createElement('div');
+        const value = block.value;
+        blockEl.classList.add('block', `block-${value}`);
         
-        const imageUrl = this.gameState.getImageForValue(value);
+        const imageUrl = this.gameState.getImageForBlockId(block.id);
 
         if (this.gameState.theme && imageUrl) {
             if (imageUrl === 'loading') {
-                block.textContent = '...';
-                block.classList.add('loading');
+                blockEl.textContent = '...';
+                blockEl.classList.add('loading');
             } else {
-                block.innerHTML = `<img src="${imageUrl}" alt="${this.gameState.theme} ${value}">`;
+                blockEl.innerHTML = `<img src="${imageUrl}" alt="${this.gameState.theme} ${value}">`;
             }
         } else {
-            block.textContent = value;
+            blockEl.textContent = value;
         }
 
-        this.positionBlock(block, index, cellSize, gap);
-        this.addBlockInteractions(block, index);
+        this.positionBlock(blockEl, index, cellSize, gap);
+        this.addBlockInteractions(blockEl, index);
         
         if (this.gameState.isBlockSelected(index)) {
-            block.classList.add('selected');
+            blockEl.classList.add('selected');
         }
 
-        this.gameBoard.appendChild(block);
+        this.gameBoard.appendChild(blockEl);
     }
     
     positionBlock(block, index, cellSize, gap) {

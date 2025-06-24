@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const header = document.querySelector('header');
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
     const themeInput = document.getElementById('theme-input');
+    const loadingOverlay = document.getElementById('loading-overlay');
 
     const levelDescriptors = [
         "a basic", "an improved", "an advanced", "a superior", "a masterful", 
@@ -81,7 +82,9 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < actualNumToSpawn; i++) {
             const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
             const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
-            gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
+            const value = gameState.getNewBlockValue();
+            const newBlock = { value: value, id: String(value) };
+            gameState.placeBlock(boardIndex, newBlock);
         }
 
         boardRenderer.render();
@@ -103,29 +106,37 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (gameState.getSelectedBlockIndex() === clickedIndex) {
+        const selectedIndex = gameState.getSelectedBlockIndex();
+
+        if (selectedIndex === clickedIndex) {
             gameState.deselectBlock();
             boardRenderer.render();
             return;
         }
 
-        const selectedIndex = gameState.getSelectedBlockIndex();
+        const selectedBlock = gameState.getBlock(selectedIndex);
+        const clickedBlock = gameState.getBlock(clickedIndex);
+
         const isNeighbor = gameState.areNeighbors(selectedIndex, clickedIndex);
-        const selectedValue = gameState.getBlockValue(selectedIndex);
-        const clickedValue = gameState.getBlockValue(clickedIndex);
+        const selectedValue = selectedBlock.value;
+        const clickedValue = clickedBlock.value;
         const sameValue = selectedValue === clickedValue;
         const sumValue = selectedValue + clickedValue;
 
         if (isNeighbor && sameValue) {
-            const mergedValue = gameState.getBlockValue(clickedIndex) + 1;
-            gameState.placeBlock(clickedIndex, mergedValue);
+            const mergedValue = clickedValue + 1;
+            const newBlock = { value: mergedValue, id: String(mergedValue) };
+            gameState.placeBlock(clickedIndex, newBlock);
             gameState.removeBlock(selectedIndex);
             gameState.updateScore(mergedValue);
             gameState.deselectBlock();
-        } else if (isNeighbor && sumValue % 2 === 0) {
+        } else if (isNeighbor && !sameValue && sumValue % 2 === 0) {
             const halfValue = sumValue / 2;
-            gameState.placeBlock(selectedIndex, halfValue);
-            gameState.placeBlock(clickedIndex, halfValue);
+            const subId = `${Math.min(selectedValue, clickedValue)}-${Math.max(selectedValue, clickedValue)}`;
+            const subBlock = { value: halfValue, id: subId };
+            
+            gameState.placeBlock(selectedIndex, subBlock);
+            gameState.placeBlock(clickedIndex, subBlock);
             gameState.updateScore(halfValue * 2);
             gameState.deselectBlock();
         } else {
@@ -140,7 +151,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dragHandler.isDragging) return;
         
         if (!gameState.hasSelectedBlock()) {
-            gameState.placeBlock(clickedIndex, gameState.getNewBlockValue());
+            const value = gameState.getNewBlockValue();
+            const newBlock = { value: value, id: String(value) };
+            gameState.placeBlock(clickedIndex, newBlock);
             boardRenderer.render();
             checkAllBlockImages();
             return;
@@ -150,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isNeighbor = gameState.areNeighbors(selectedIndex, clickedIndex);
 
         if (isNeighbor) {
-            gameState.placeBlock(clickedIndex, gameState.getBlockValue(selectedIndex));
+            gameState.placeBlock(clickedIndex, gameState.getBlock(selectedIndex));
             gameState.removeBlock(selectedIndex);
             gameState.deselectBlock();
             boardRenderer.render();
@@ -161,14 +174,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function generateImageForValue(value) {
-        if (!gameState.theme || gameState.getImageForValue(value)) {
+    async function generateImageForNormalBlock(value) {
+        const id = String(value);
+        if (!gameState.theme || gameState.getImageForBlockId(id)) {
             return;
         }
-
-        // Set status to loading to prevent multiple requests
-        gameState.setImageForValue(value, 'loading');
-        boardRenderer.render(); // Show loading indicator
+        gameState.setImageForBlockId(id, 'loading');
+        boardRenderer.render();
 
         try {
             const descriptor = levelDescriptors[value - 1] || `an evolved`;
@@ -177,23 +189,91 @@ document.addEventListener('DOMContentLoaded', () => {
                 transparent: false,
                 aspect: "square"
             });
-            gameState.setImageForValue(value, result.url);
+            gameState.setImageForBlockId(id, result.url);
         } catch (error) {
             console.error(`Failed to generate image for value ${value}:`, error);
-            // Revert status if generation fails
-            gameState.setImageForValue(value, null);
+            gameState.setImageForBlockId(id, null);
         }
-
         boardRenderer.render();
+    }
+
+    async function generateImageForSubCombination(subId) {
+        if (!gameState.theme || gameState.getImageForBlockId(subId)) {
+            return;
+        }
+        gameState.setImageForBlockId(subId, 'loading');
+        boardRenderer.render();
+        loadingOverlay.classList.add('active');
+
+        try {
+            const [val1, val2] = subId.split('-').map(Number);
+            const imageUrl1 = gameState.getImageForBlockId(String(val1));
+            const imageUrl2 = gameState.getImageForBlockId(String(val2));
+
+            if (!imageUrl1 || !imageUrl2 || imageUrl1 === 'loading' || imageUrl2 === 'loading') {
+                console.warn(`Parent images for ${subId} not ready, will retry.`);
+                gameState.setImageForBlockId(subId, null);
+                loadingOverlay.classList.remove('active');
+                boardRenderer.render();
+                return;
+            }
+
+            // Step 1 & 2: Get descriptions
+            const descriptionPrompt = `Describe this image of a "${gameState.theme}" icon in detail for an image generation AI. Focus on style, color, and key visual elements.`;
+            const [desc1Completion, desc2Completion] = await Promise.all([
+                websim.chat.completions.create({ messages: [{ role: 'user', content: [{ type: 'text', text: descriptionPrompt }, { type: 'image_url', image_url: { url: imageUrl1 }}]}] }),
+                websim.chat.completions.create({ messages: [{ role: 'user', content: [{ type: 'text', text: descriptionPrompt }, { type: 'image_url', image_url: { url: imageUrl2 }}]}] })
+            ]);
+
+            const desc1 = desc1Completion.content;
+            const desc2 = desc2Completion.content;
+
+            // Step 3: Combine descriptions
+            const combinePrompt = `Combine these two image descriptions into a single, coherent prompt for a new image generation. The new image should be a creative fusion of the two original concepts. The theme is "${gameState.theme}". The final prompt should start with "A cute, simple icon of...". Don't mention the original items. Just describe the new fused item.
+Description 1: ${desc1}
+Description 2: ${desc2}`;
+            const combinedDescCompletion = await websim.chat.completions.create({ messages: [{ role: 'user', content: combinePrompt }] });
+            const finalPrompt = combinedDescCompletion.content;
+
+            // Step 4: Generate new image
+            const result = await websim.imageGen({
+                prompt: `${finalPrompt} Sticker style, on a white background. Do not include any text or numbers.`,
+                transparent: false,
+                aspect: "square"
+            });
+            gameState.setImageForBlockId(subId, result.url);
+
+        } catch (error) {
+            console.error(`Failed to generate image for sub-combination ${subId}:`, error);
+            gameState.setImageForBlockId(subId, null);
+        } finally {
+            loadingOverlay.classList.remove('active');
+            boardRenderer.render();
+        }
     }
 
     function checkAllBlockImages() {
         if (!gameState.theme) return;
 
-        const uniqueValues = [...new Set(gameState.boardState.filter(v => v > 0))];
-        uniqueValues.forEach(value => {
-            if (!gameState.getImageForValue(value)) {
-                generateImageForValue(value);
+        const uniqueBlocks = [];
+        const seenIds = new Set();
+        gameState.boardState.forEach(block => {
+            if (block && !seenIds.has(block.id)) {
+                uniqueBlocks.push(block);
+                seenIds.add(block.id);
+            }
+        });
+
+        uniqueBlocks.forEach(block => {
+            const id = block.id;
+            if (!gameState.getImageForBlockId(id)) {
+                if (id.includes('-')) {
+                    // It's a sub-combination
+                    generateImageForSubCombination(id);
+                } else {
+                    // It's a normal block
+                    generateImageForNormalBlock(block.value);
+                }
             }
         });
     }
@@ -242,9 +322,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    gameOverlay.addEventListener('click', () => {
-        gameState.deselectBlock();
-        boardRenderer.render();
+    // We make the overlay clickable to deselect blocks
+    const gameScreenDiv = document.getElementById('game-screen');
+    gameScreenDiv.addEventListener('click', (event) => {
+        // if the click is on the game-screen background itself (and not on the board)
+        if (event.target === gameScreenDiv || event.target === document.getElementById('game-container')) {
+             gameState.deselectBlock();
+             boardRenderer.render();
+        }
+    });
+
+    gameOverlay.addEventListener('click', (event) => {
+        // This is a backup for clicks on the board but not on a block.
+        const boardRect = gameBoard.getBoundingClientRect();
+        if (
+            event.clientX >= boardRect.left && event.clientX <= boardRect.right &&
+            event.clientY >= boardRect.top && event.clientY <= boardRect.bottom
+        ) {
+            gameState.deselectBlock();
+            boardRenderer.render();
+        }
     });
     
     document.addEventListener('click', (event) => {
