@@ -55,6 +55,16 @@ header.in-game {
     display: flex;
     justify-content: center;
     align-items: center;
+    perspective: 200px; /* Add perspective for a 3D flip effect */
+}
+
+#hourglass-flipper {
+    transition: transform 0.6s ease-in-out;
+    transform-style: preserve-3d;
+}
+
+#hourglass-flipper.flipped {
+    transform: rotateY(180deg);
 }
 
 #hourglass-svg {

@@ -13,21 +13,23 @@
                 Score: <span id="score">0</span>
             </div>
             <div id="hourglass-container">
-                <svg id="hourglass-svg" width="60" height="80" viewBox="0 0 60 80">
-                    <defs>
-                        <clipPath id="hourglass-clip">
-                            <!-- This path defines the interior shape where sand is visible -->
-                            <path d="M 10 10 Q 30 10 50 10 L 32 40 L 50 70 Q 30 70 10 70 L 28 40 Z" />
-                        </clipPath>
-                    </defs>
-                    <!-- Glass Outline -->
-                    <path d="M 5 5 Q 30 5 55 5 L 55 10 Q 30 10 5 10 Z" fill="#c0c0c0" />
-                    <path d="M 5 75 Q 30 75 55 75 L 55 70 Q 30 70 5 70 Z" fill="#c0c0c0" />
-                    <path d="M 10 10 Q 30 10 50 10 L 32 40 L 50 70 Q 30 70 10 70 L 28 40 Z" stroke="#776e65" stroke-width="3" fill="rgba(204, 192, 179, 0.5)"/>
+                <div id="hourglass-flipper">
+                    <svg id="hourglass-svg" width="60" height="80" viewBox="0 0 60 80">
+                        <defs>
+                            <clipPath id="hourglass-clip">
+                                <!-- This path defines the interior shape where sand is visible -->
+                                <path d="M 10 10 Q 30 10 50 10 L 32 40 L 50 70 Q 30 70 10 70 L 28 40 Z" />
+                            </clipPath>
+                        </defs>
+                        <!-- Glass Outline -->
+                        <path d="M 5 5 Q 30 5 55 5 L 55 10 Q 30 10 5 10 Z" fill="#c0c0c0" />
+                        <path d="M 5 75 Q 30 75 55 75 L 55 70 Q 30 70 5 70 Z" fill="#c0c0c0" />
+                        <path d="M 10 10 Q 30 10 50 10 L 32 40 L 50 70 Q 30 70 10 70 L 28 40 Z" stroke="#776e65" stroke-width="3" fill="rgba(204, 192, 179, 0.5)"/>
 
-                    <!-- Sand Container -->
-                    <g id="sand-container" clip-path="url(#hourglass-clip)"></g>
-                </svg>
+                        <!-- Sand Container -->
+                        <g id="sand-container" clip-path="url(#hourglass-clip)"></g>
+                    </svg>
+                </div>
             </div>
             <div id="game-controls">
                  <button id="back-btn">Back to Menu</button>
