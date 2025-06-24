@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const handleBlockClick = (clickedIndex) => {
-        // Skip if we're in the middle of a drag operation
+        // Skip if we're in the middle of a drag operation or if this was part of a completed drag
         if (isDragging) return;
         
         if (selectedBlockIndex === -1) {
@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const handleEmptyCellClick = (clickedIndex) => {
-        // Skip if we're in the middle of a drag operation
+        // Skip if we're in the middle of a drag operation or if this was part of a completed drag
         if (isDragging) return;
         
         if (selectedBlockIndex === -1) {
@@ -348,23 +348,82 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Adjust font size based on cell size
                 block.style.fontSize = `${cellSize * 0.4}px`;
 
+                let dragStarted = false;
+                let startTime = 0;
+
                 // Add click listener for selection
                 block.addEventListener('click', (e) => {
                     e.stopPropagation(); // Prevents clicks from propagating to board
-                    handleBlockClick(i);
+                    // Only handle click if it wasn't a drag operation
+                    if (!dragStarted) {
+                        handleBlockClick(i);
+                    }
                 });
 
                 // Add mouse drag events
                 block.addEventListener('mousedown', (e) => {
                     e.preventDefault();
-                    handleDragStart(i, e.clientX, e.clientY);
+                    dragStarted = false;
+                    startTime = Date.now();
+                    
+                    const mouseMove = (moveEvent) => {
+                        const timeDiff = Date.now() - startTime;
+                        const distance = Math.sqrt(
+                            Math.pow(moveEvent.clientX - e.clientX, 2) + 
+                            Math.pow(moveEvent.clientY - e.clientY, 2)
+                        );
+                        
+                        // Start drag if mouse moved more than 5px or held for more than 150ms
+                        if ((distance > 5 || timeDiff > 150) && !dragStarted) {
+                            dragStarted = true;
+                            handleDragStart(i, e.clientX, e.clientY);
+                            document.removeEventListener('mousemove', mouseMove);
+                            document.removeEventListener('mouseup', mouseUp);
+                        }
+                    };
+                    
+                    const mouseUp = () => {
+                        document.removeEventListener('mousemove', mouseMove);
+                        document.removeEventListener('mouseup', mouseUp);
+                    };
+                    
+                    document.addEventListener('mousemove', mouseMove);
+                    document.addEventListener('mouseup', mouseUp);
                 });
 
                 // Add touch drag events
                 block.addEventListener('touchstart', (e) => {
                     e.preventDefault();
+                    dragStarted = false;
+                    startTime = Date.now();
                     const touch = e.touches[0];
-                    handleDragStart(i, touch.clientX, touch.clientY);
+                    const startX = touch.clientX;
+                    const startY = touch.clientY;
+                    
+                    const touchMove = (moveEvent) => {
+                        const currentTouch = moveEvent.touches[0];
+                        const timeDiff = Date.now() - startTime;
+                        const distance = Math.sqrt(
+                            Math.pow(currentTouch.clientX - startX, 2) + 
+                            Math.pow(currentTouch.clientY - startY, 2)
+                        );
+                        
+                        // Start drag if finger moved more than 10px or held for more than 200ms
+                        if ((distance > 10 || timeDiff > 200) && !dragStarted) {
+                            dragStarted = true;
+                            handleDragStart(i, startX, startY);
+                            document.removeEventListener('touchmove', touchMove);
+                            document.removeEventListener('touchend', touchEnd);
+                        }
+                    };
+                    
+                    const touchEnd = () => {
+                        document.removeEventListener('touchmove', touchMove);
+                        document.removeEventListener('touchend', touchEnd);
+                    };
+                    
+                    document.addEventListener('touchmove', touchMove);
+                    document.addEventListener('touchend', touchEnd);
                 });
                 
                 // Add selected class if this block is the selected one
