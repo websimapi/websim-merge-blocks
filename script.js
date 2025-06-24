@@ -230,8 +230,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const engine = Matter.Engine.create();
         const world = engine.world;
         
-        // Reduce gravity for slower sand flow
-        engine.world.gravity.y = 0.5;
+        // Set gravity based on difficulty - weaker for easy mode
+        if (currentDifficulty === 'easy') {
+            engine.world.gravity.y = 0.3;
+        } else if (currentDifficulty === 'medium') {
+            engine.world.gravity.y = 0.5;
+        } else { // hard mode
+            engine.world.gravity.y = 0.7;
+        }
         
         // Set up canvas dimensions
         canvas.width = 120;
