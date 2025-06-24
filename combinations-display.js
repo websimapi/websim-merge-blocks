@@ -52,13 +52,14 @@ export class CombinationsDisplay {
 
     createComboPart(value) {
         const part = document.createElement('div');
-        part.classList.add('combo-part', `block-${value}`);
+        part.classList.add('combo-part');
         
         const imageUrl = this.gameState.getImageForValue(value);
         if (this.gameState.theme && imageUrl && imageUrl !== 'loading') {
             part.innerHTML = `<img src="${imageUrl}" alt="Image for ${value}">`;
         } else {
             part.textContent = value;
+            part.classList.add(`block-${value}`);
         }
         
         return part;
@@ -66,6 +67,7 @@ export class CombinationsDisplay {
 
     findAndHighlightCombination(combo) {
         const { boardState, gridSize } = this.gameState;
+        const matchingPairs = [];
 
         for (let i = 0; i < boardState.length; i++) {
             if (boardState[i] === 0) continue;
@@ -81,26 +83,36 @@ export class CombinationsDisplay {
 
                 let match = false;
                 if (combo.type === 'merge') {
+                    // For merge, board values must match combo.v1
                     if (v1 === combo.v1 && v2 === combo.v1) {
                         match = true;
                     }
                 } else { // split
                     const minV = Math.min(v1, v2);
                     const maxV = Math.max(v1, v2);
+                    // For split, board values must match combo.v1 and combo.v2
                     if (minV === combo.v1 && maxV === combo.v2) {
                         match = true;
                     }
                 }
 
                 if (match) {
-                    this.highlightBlocks([i, j]);
-                    return; // Found one pair, highlight and exit
+                    matchingPairs.push([i, j]);
                 }
             }
+        }
+
+        if (matchingPairs.length > 0) {
+            const randomIndex = Math.floor(Math.random() * matchingPairs.length);
+            const pairToHighlight = matchingPairs[randomIndex];
+            this.highlightBlocks(pairToHighlight);
         }
     }
 
     highlightBlocks(indices) {
+        // Clear any existing highlights first
+        document.querySelectorAll('.block.highlighted').forEach(b => b.classList.remove('highlighted'));
+
         indices.forEach(index => {
             const blockEl = document.querySelector(`.block[data-index="${index}"]`);
             if (blockEl) {
