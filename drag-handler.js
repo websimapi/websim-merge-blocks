@@ -140,6 +140,11 @@ export class DragHandler {
         this.dragStartIndex = -1;
         this.dragEndIndex = -1;
         this.gameState.deselectBlock();
+        
+        // Trigger board re-render after drag operations
+        if (this.onDragComplete) {
+            this.onDragComplete();
+        }
     }
     
     processDragAction(startIndex, endIndex) {

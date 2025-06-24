@@ -26,6 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
         handleEmptyCellClick
     );
 
+    // Set up drag completion callback
+    dragHandler.onDragComplete = () => {
+        boardRenderer.render();
+    };
+
     function spawnRandomBlock() {
         const emptyCells = gameState.getEmptyCells();
         if (emptyCells.length === 0) {
