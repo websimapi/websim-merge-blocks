@@ -122,10 +122,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // This is a merge attempt.
 
         const isNeighbor = areNeighbors(selectedBlockIndex, clickedIndex);
-        const sameValue = boardState[selectedBlockIndex] === boardState[clickedIndex];
+        const selectedValue = boardState[selectedBlockIndex];
+        const clickedValue = boardState[clickedIndex];
+        const sameValue = selectedValue === clickedValue;
+        const sumValue = selectedValue + clickedValue;
 
         if (isNeighbor && sameValue) {
-            // Merge condition met!
+            // Original merge condition met!
             const mergedValue = boardState[clickedIndex] + 1;
             boardState[clickedIndex] = mergedValue; // Update second block's value
             boardState[selectedBlockIndex] = 0;   // Empty the first block's cell
@@ -135,6 +138,18 @@ document.addEventListener('DOMContentLoaded', () => {
             scoreElement.textContent = score;
 
             // Deselect after merge
+            selectedBlockIndex = -1;
+        } else if (isNeighbor && sumValue % 2 === 0) {
+            // New rule: if sum is even, split the sum between both blocks
+            const halfValue = sumValue / 2;
+            boardState[selectedBlockIndex] = halfValue;
+            boardState[clickedIndex] = halfValue;
+
+            // Update score - add the half value for each block
+            score += halfValue * 2;
+            scoreElement.textContent = score;
+
+            // Deselect after split merge
             selectedBlockIndex = -1;
         } else {
             // Not a valid merge. Select the newly clicked block instead.
@@ -279,7 +294,10 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Merging with another block
                 const isNeighbor = areNeighbors(dragStartIndex, dragEndIndex);
-                const sameValue = boardState[dragStartIndex] === boardState[dragEndIndex];
+                const startValue = boardState[dragStartIndex];
+                const endValue = boardState[dragEndIndex];
+                const sameValue = startValue === endValue;
+                const sumValue = startValue + endValue;
                 
                 if (isNeighbor && sameValue) {
                     const mergedValue = boardState[dragEndIndex] + 1;
@@ -287,6 +305,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     boardState[dragStartIndex] = 0;
                     
                     score += mergedValue;
+                    scoreElement.textContent = score;
+                } else if (isNeighbor && sumValue % 2 === 0) {
+                    // New rule: if sum is even, split the sum between both blocks
+                    const halfValue = sumValue / 2;
+                    boardState[dragStartIndex] = halfValue;
+                    boardState[dragEndIndex] = halfValue;
+
+                    // Update score - add the half value for each block
+                    score += halfValue * 2;
                     scoreElement.textContent = score;
                 }
             }
