@@ -45,6 +45,7 @@ export class CombinationsDisplay {
                 li.appendChild(resultContainer);
             }
             
+            li.addEventListener('click', () => this.findAndHighlightCombination(combo));
             this.combinationsList.appendChild(li);
         });
     }
@@ -61,6 +62,54 @@ export class CombinationsDisplay {
         }
         
         return part;
+    }
+
+    findAndHighlightCombination(combo) {
+        const { boardState, gridSize } = this.gameState;
+
+        for (let i = 0; i < boardState.length; i++) {
+            if (boardState[i] === 0) continue;
+
+            const neighbors = this.getNeighborIndices(i, gridSize);
+
+            for (const j of neighbors) {
+                if (boardState[j] === 0) continue;
+                if (i >= j) continue;
+
+                const v1 = boardState[i];
+                const v2 = boardState[j];
+
+                let match = false;
+                if (combo.type === 'merge') {
+                    if (v1 === combo.v1 && v2 === combo.v1) {
+                        match = true;
+                    }
+                } else { // split
+                    const minV = Math.min(v1, v2);
+                    const maxV = Math.max(v1, v2);
+                    if (minV === combo.v1 && maxV === combo.v2) {
+                        match = true;
+                    }
+                }
+
+                if (match) {
+                    this.highlightBlocks([i, j]);
+                    return; // Found one pair, highlight and exit
+                }
+            }
+        }
+    }
+
+    highlightBlocks(indices) {
+        indices.forEach(index => {
+            const blockEl = document.querySelector(`.block[data-index="${index}"]`);
+            if (blockEl) {
+                blockEl.classList.add('highlighted');
+                setTimeout(() => {
+                    blockEl.classList.remove('highlighted');
+                }, 1000); // Highlight for 1 second
+            }
+        });
     }
 
     findCombinations() {

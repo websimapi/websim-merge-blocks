@@ -41,6 +41,7 @@ export class BoardRenderer {
         const block = document.createElement('div');
         const value = this.gameState.getBlockValue(index);
         block.classList.add('block', `block-${value}`);
+        block.dataset.index = index;
         
         const imageUrl = this.gameState.getImageForValue(value);
 
