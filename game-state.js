@@ -20,33 +20,38 @@ export class GameState {
         this.theme = null;
         this.blockImages = {};
         this.nextSpawnIndices = [];
+        this.highestValueSeen = 0;
+        this.onNewHighestValue = null;
     }
     
-    initializeGame(difficulty, theme, blockImages = {}) {
+    initializeGame(difficulty, theme) {
         this.currentDifficulty = difficulty;
         this.theme = theme;
-        this.blockImages = blockImages;
+        this.blockImages = {};
         const config = this.GAME_CONFIG[difficulty];
         this.gridSize = config.gridSize;
         this.score = 0;
         this.selectedBlockIndex = -1;
         this.boardState = new Array(this.gridSize * this.gridSize).fill(0);
         this.nextSpawnIndices = [];
+        this.highestValueSeen = 0;
+        // The callback is set in script.js after initialization
+        this.onNewHighestValue = null; 
         return config;
     }
     
-    getNewBlockValue(score = this.score) {
+    getNewBlockValue() {
         const rand = Math.random();
 
-        if (score < 100) {
+        if (this.score < 100) {
             return 1;
-        } else if (score < 500) {
+        } else if (this.score < 500) {
             return rand < 0.8 ? 1 : 2;
-        } else if (score < 1500) {
+        } else if (this.score < 1500) {
             if (rand < 0.6) return 1;
             if (rand < 0.9) return 2;
             return 3;
-        } else if (score < 3000) {
+        } else if (this.score < 3000) {
             if (rand < 0.40) return 1;
             if (rand < 0.75) return 2;
             if (rand < 0.95) return 3;
@@ -84,7 +89,7 @@ export class GameState {
     
     updateScore(points) {
         this.score += points;
-        // The score display is updated from presence now
+        document.getElementById('score').textContent = this.score;
     }
     
     selectBlock(index) {
@@ -97,6 +102,12 @@ export class GameState {
     
     placeBlock(index, value) {
         this.boardState[index] = value;
+        if (value > this.highestValueSeen) {
+            this.highestValueSeen = value;
+            if (this.onNewHighestValue) {
+                this.onNewHighestValue(this.highestValueSeen);
+            }
+        }
     }
     
     removeBlock(index) {

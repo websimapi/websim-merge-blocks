@@ -10,21 +10,14 @@ export class BoardRenderer {
     
     render() {
         this.gameBoard.innerHTML = '';
-
-        // If boardstate is not initialized, don't render
-        if (!this.gameState.boardState || this.gameState.boardState.length === 0) return;
         
-        const isMainBoard = this.gameBoard.id === 'game-board';
-        const gap = isMainBoard ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap')) : 4;
         const boardSize = this.gameBoard.clientWidth;
-        const cellSize = (boardSize - ((this.gameState.gridSize + 1) * gap)) / this.gameState.gridSize;
-        
+        const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
+        const cellSize = (boardSize - (this.gameState.gridSize + 1) * gap) / this.gameState.gridSize;
 
         this.gameBoard.style.gridTemplateColumns = `repeat(${this.gameState.gridSize}, 1fr)`;
         this.gameBoard.style.gridTemplateRows = `repeat(${this.gameState.gridSize}, 1fr)`;
         this.gameBoard.style.gap = `${gap}px`;
-        if(!isMainBoard) this.gameBoard.style.padding = `${gap}px`;
-
 
         for (let i = 0; i < this.gameState.gridSize * this.gameState.gridSize; i++) {
             this.createGridCell(i);
@@ -34,23 +27,18 @@ export class BoardRenderer {
             }
         }
         
-        if (this.gameState.nextSpawnIndices) {
-            this.gameState.nextSpawnIndices.forEach(index => {
-                this.createSpawnIndicator(index, cellSize, gap);
-            });
-        }
+        this.gameState.nextSpawnIndices.forEach(index => {
+            this.createSpawnIndicator(index, cellSize, gap);
+        });
     }
     
     renderBlocks() {
         // Remove only existing blocks
         this.gameBoard.querySelectorAll('.block').forEach(el => el.remove());
 
-        if (!this.gameState.boardState || this.gameState.boardState.length === 0) return;
-
-        const isMainBoard = this.gameBoard.id === 'game-board';
-        const gap = isMainBoard ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap')) : 4;
         const boardSize = this.gameBoard.clientWidth;
-        const cellSize = (boardSize - ((this.gameState.gridSize + 1) * gap)) / this.gameState.gridSize;
+        const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
+        const cellSize = (boardSize - (this.gameState.gridSize + 1) * gap) / this.gameState.gridSize;
 
         // Re-create blocks
         for (let i = 0; i < this.gameState.gridSize * this.gameState.gridSize; i++) {
@@ -63,37 +51,28 @@ export class BoardRenderer {
     renderIndicators() {
         // Remove only existing indicators
         this.gameBoard.querySelectorAll('.spawn-indicator').forEach(el => el.remove());
-
-        if (!this.gameState.boardState || this.gameState.boardState.length === 0) return;
         
-        const isMainBoard = this.gameBoard.id === 'game-board';
-        const gap = isMainBoard ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap')) : 4;
         const boardSize = this.gameBoard.clientWidth;
+        const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
         const cellSize = (boardSize - (this.gameState.gridSize + 1) * gap) / this.gameState.gridSize;
 
-
         // Re-create indicators
-        if (this.gameState.nextSpawnIndices) {
-            this.gameState.nextSpawnIndices.forEach(index => {
-                this.createSpawnIndicator(index, cellSize, gap);
-            });
-        }
+        this.gameState.nextSpawnIndices.forEach(index => {
+            this.createSpawnIndicator(index, cellSize, gap);
+        });
     }
     
     createGridCell(index) {
         const cell = document.createElement('div');
         cell.classList.add('grid-cell');
-        
-        if (this.onEmptyCellClick) {
-            cell.addEventListener('click', (e) => {
-                // Prevent clicks from propagating to the overlay if this cell has an indicator
-                const isIndicatorCell = this.gameState.nextSpawnIndices && this.gameState.nextSpawnIndices.includes(index);
-                if(isIndicatorCell && (this.gameState.currentDifficulty === 'easy' || this.gameState.currentDifficulty === 'zen')){
-                    e.stopPropagation();
-                }
-                this.onEmptyCellClick(index);
-            });
-        }
+        cell.addEventListener('click', (e) => {
+            // Prevent clicks from propagating to the overlay if this cell has an indicator
+            const isIndicatorCell = this.gameState.nextSpawnIndices.includes(index);
+            if(isIndicatorCell && (this.gameState.currentDifficulty === 'easy' || this.gameState.currentDifficulty === 'zen')){
+                e.stopPropagation();
+            }
+            this.onEmptyCellClick(index);
+        });
         this.gameBoard.appendChild(cell);
     }
     
@@ -133,10 +112,7 @@ export class BoardRenderer {
         }
 
         this.positionBlock(block, index, cellSize, gap);
-        
-        if(this.dragHandler) {
-            this.addBlockInteractions(block, index);
-        }
+        this.addBlockInteractions(block, index);
         
         if (this.gameState.isBlockSelected(index)) {
             block.classList.add('selected');
