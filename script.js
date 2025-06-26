@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dragHandler.onDragComplete = (boardChanged) => {
         if (boardChanged) {
             boardRenderer.renderBlocks();
-            checkAllBlockImages();
+            manageBlockImages();
             combinationsDisplay.update();
         } else {
             // Re-render to clear selection state if drag was invalid
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gameState.nextSpawnIndices = [];
 
         boardRenderer.render();
-        checkAllBlockImages();
+        manageBlockImages();
         combinationsDisplay.update();
         prepareNextSpawn();
     }
@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         boardRenderer.renderBlocks();
         if (boardChanged) {
-            checkAllBlockImages();
+            manageBlockImages();
             combinationsDisplay.update();
         }
     }
@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.renderBlocks();
 
         if (boardChanged) {
-            checkAllBlockImages();
+            manageBlockImages();
             combinationsDisplay.update();
         }
     }
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Re-render the board to show the new block and remove the indicator
         boardRenderer.render();
-        checkAllBlockImages();
+        manageBlockImages();
         combinationsDisplay.update();
     }
 
@@ -261,30 +261,57 @@ document.addEventListener('DOMContentLoaded', () => {
         combinationsDisplay.update();
     }
 
-    function checkAllBlockImages() {
+    function manageBlockImages() {
         if (!gameState.theme) return;
 
         const uniqueValues = [...new Set(gameState.boardState.filter(v => v > 0))];
+        
+        // Ensure images for current values are loading/loaded
         uniqueValues.forEach(value => {
             if (!gameState.getImageForValue(value)) {
                 generateImageForValue(value);
             }
         });
+
+        // Pre-load for next levels
+        if (uniqueValues.length > 0) {
+            const maxVal = Math.max(...uniqueValues);
+            const nextVal1 = maxVal + 1;
+            const nextVal2 = maxVal + 2;
+
+            if (levelDescriptors[nextVal1 - 1] && !gameState.getImageForValue(nextVal1)) {
+                generateImageForValue(nextVal1);
+            }
+            if (levelDescriptors[nextVal2 - 1] && !gameState.getImageForValue(nextVal2)) {
+                generateImageForValue(nextVal2);
+            }
+        }
     }
 
-    function startGame(difficulty) {
+    async function startGame(difficulty, clickedButton = null) {
         const theme = themeInput.value.trim() || null;
+        
+        // Pre-load initial images if a theme is selected
+        if (theme && clickedButton) {
+            const originalText = clickedButton.textContent;
+            clickedButton.textContent = 'Loading...';
+            difficultyButtons.forEach(btn => btn.disabled = true);
+            
+            gameState.theme = theme;
+            gameState.blockImages = {};
+
+            // Use Promise.allSettled to ensure we proceed even if one fails
+            await Promise.allSettled([
+                generateImageForValue(1),
+                generateImageForValue(2)
+            ]);
+            
+            clickedButton.textContent = originalText;
+            difficultyButtons.forEach(btn => btn.disabled = false);
+        }
+
         const config = gameState.initializeGame(difficulty, theme);
         hourglassManager.destroy();
-
-        // Assign the callback that will pre-generate images
-        gameState.onNewHighestValue = handleNewHighestValue;
-
-        if (theme) {
-            // Pre-generate images for the first two levels to get started.
-            generateImageForValue(1);
-            generateImageForValue(2);
-        }
 
         if (difficulty === 'hard') {
             combinationsContainer.style.display = 'none';
@@ -304,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Now render, check for all images, and update combinations
         boardRenderer.render();
-        checkAllBlockImages();
+        manageBlockImages();
         combinationsDisplay.update();
         prepareNextSpawn();
 
@@ -332,16 +359,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    function handleNewHighestValue(value) {
-        if (!gameState.theme) return;
-        
-        // When a new highest value appears, start generating images
-        // for the next two levels in the background.
-        console.log(`New highest value: ${value}. Pre-generating images for ${value + 1} and ${value + 2}.`);
-        generateImageForValue(value + 1);
-        generateImageForValue(value + 2);
-    }
-    
     function showTitleScreen() {
         titleScreen.classList.add('active');
         gameScreen.classList.remove('active');
@@ -355,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event listeners
     difficultyButtons.forEach(button => {
         button.addEventListener('click', () => {
-            startGame(button.dataset.difficulty);
+            startGame(button.dataset.difficulty, button);
         });
     });
 

@@ -20,23 +20,21 @@ export class GameState {
         this.theme = null;
         this.blockImages = {};
         this.nextSpawnIndices = [];
-        this.highestValueSeen = 0;
-        this.onNewHighestValue = null;
     }
     
     initializeGame(difficulty, theme) {
         this.currentDifficulty = difficulty;
         this.theme = theme;
-        this.blockImages = {};
+        // Preserve pre-loaded images if they exist
+        if (Object.keys(this.blockImages).length === 0) {
+            this.blockImages = {};
+        }
         const config = this.GAME_CONFIG[difficulty];
         this.gridSize = config.gridSize;
         this.score = 0;
         this.selectedBlockIndex = -1;
         this.boardState = new Array(this.gridSize * this.gridSize).fill(0);
         this.nextSpawnIndices = [];
-        this.highestValueSeen = 0;
-        // The callback is set in script.js after initialization
-        this.onNewHighestValue = null; 
         return config;
     }
     
@@ -102,12 +100,6 @@ export class GameState {
     
     placeBlock(index, value) {
         this.boardState[index] = value;
-        if (value > this.highestValueSeen) {
-            this.highestValueSeen = value;
-            if (this.onNewHighestValue) {
-                this.onNewHighestValue(this.highestValueSeen);
-            }
-        }
     }
     
     removeBlock(index) {

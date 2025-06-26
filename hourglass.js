@@ -1,6 +1,4 @@
 // Hourglass physics simulation module
-import Matter from 'matter-js';
-
 export class HourglassManager {
     constructor(gameState) {
         this.gameState = gameState;
