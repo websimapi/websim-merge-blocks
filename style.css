@@ -19,11 +19,14 @@ body {
     flex-direction: column;
     padding: 20px;
     box-sizing: border-box;
+    width: 100%;
 }
 
 #app {
     text-align: center;
     position: relative;
+    width: 100%;
+    max-width: 1600px;
 }
 
 header {
@@ -35,6 +38,8 @@ header {
     visibility: hidden;
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
+    max-width: var(--board-size);
+    margin: 0 auto;
 }
 
 header.in-game {
@@ -132,18 +137,205 @@ h1 {
     box-shadow: 0 6px 8px rgba(0,0,0,0.15);
 }
 
+#multiplayer-options {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 2px solid var(--grid-cell-color);
+}
+
+.multiplayer-join {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+#room-code-input {
+    font-size: 1.2rem;
+    padding: 10px;
+    border-radius: 5px;
+    border: 2px solid var(--grid-cell-color);
+    text-align: center;
+}
+
+#join-game-btn, #host-game-btn, #start-game-btn {
+    font-size: 1.2rem;
+    padding: 10px 20px;
+    border-radius: 5px;
+    border: none;
+    background-color: #f59563;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#join-game-btn:hover, #host-game-btn:hover, #start-game-btn:hover {
+    background-color: #f67c5f;
+}
+
+#lobby-screen {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fdfcf9;
+    border-radius: 8px;
+    border: 2px solid var(--background-color);
+}
+
+#lobby-info {
+    font-size: 1.4rem;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+#room-code-display {
+    background-color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    border: 1px solid var(--grid-cell-color);
+}
+#copy-code-btn {
+    font-size: 1rem;
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: none;
+    background-color: #8f7a66;
+    color: white;
+    cursor: pointer;
+}
+
+#player-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+}
+
+#player-list li {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px;
+    background: #eee4da;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+}
+
+#player-list img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+#start-game-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.5rem;
+}
+
 #game-screen.active {
     display: flex;
     flex-direction: column;
     align-items: center;
+    width: 100%;
 }
 
 #game-container {
     display: flex;
-    gap: 30px;
+    gap: 20px;
     align-items: flex-start;
     justify-content: center;
-    flex-wrap: wrap;
+    width: 100%;
+}
+
+#main-game-area {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+}
+
+#other-players-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 300px;
+}
+
+.other-player-board {
+    border: 2px solid var(--background-color);
+    border-radius: 8px;
+    padding: 10px;
+    background: #fdfcf9;
+}
+
+.other-player-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.other-player-header img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+}
+
+.other-player-info {
+    text-align: left;
+}
+.other-player-info .username {
+    font-weight: bold;
+}
+.other-player-info .score {
+    font-size: 0.9rem;
+}
+
+.other-player-board .game-board-wrapper {
+    position: relative;
+    width: 100%;
+    padding-top: 100%; /* 1:1 Aspect Ratio */
+    height: 0;
+}
+
+.other-player-board .game-board {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    background-color: var(--background-color);
+    border-radius: 6px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.other-player-board .grid-cell {
+    background-color: var(--grid-cell-color);
+    border-radius: 2px;
+}
+
+.other-player-board .block {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    border-radius: 2px;
+    color: var(--font-color-light);
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.other-player-board .block img {
+     width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 2px;
 }
 
 #hourglass-container {

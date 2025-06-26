@@ -22,10 +22,10 @@ export class GameState {
         this.nextSpawnIndices = [];
     }
     
-    initializeGame(difficulty, theme) {
+    initializeGame(difficulty, theme, blockImages = {}) {
         this.currentDifficulty = difficulty;
         this.theme = theme;
-        this.blockImages = {};
+        this.blockImages = blockImages;
         const config = this.GAME_CONFIG[difficulty];
         this.gridSize = config.gridSize;
         this.score = 0;
@@ -35,18 +35,18 @@ export class GameState {
         return config;
     }
     
-    getNewBlockValue() {
+    getNewBlockValue(score = this.score) {
         const rand = Math.random();
 
-        if (this.score < 100) {
+        if (score < 100) {
             return 1;
-        } else if (this.score < 500) {
+        } else if (score < 500) {
             return rand < 0.8 ? 1 : 2;
-        } else if (this.score < 1500) {
+        } else if (score < 1500) {
             if (rand < 0.6) return 1;
             if (rand < 0.9) return 2;
             return 3;
-        } else if (this.score < 3000) {
+        } else if (score < 3000) {
             if (rand < 0.40) return 1;
             if (rand < 0.75) return 2;
             if (rand < 0.95) return 3;
@@ -84,7 +84,7 @@ export class GameState {
     
     updateScore(points) {
         this.score += points;
-        document.getElementById('score').textContent = this.score;
+        // The score display is updated from presence now
     }
     
     selectBlock(index) {

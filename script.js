@@ -5,9 +5,14 @@ import { DragHandler } from './drag-handler.js';
 import { BoardRenderer } from './board-renderer.js';
 import { CombinationsDisplay } from './combinations-display.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // --- WEBSIM MULTIPLAYER ---
+    const room = new WebsimSocket();
+    await room.initialize();
+
     // DOM elements
     const titleScreen = document.getElementById('title-screen');
+    const lobbyScreen = document.getElementById('lobby-screen');
     const gameScreen = document.getElementById('game-screen');
     const gameBoard = document.getElementById('game-board');
     const homeBtn = document.getElementById('home-btn');
@@ -16,6 +21,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
     const themeInput = document.getElementById('theme-input');
     const combinationsContainer = document.getElementById('combinations-container');
+    const otherPlayersContainer = document.getElementById('other-players-container');
+
+    // Multiplayer UI
+    const hostGameBtn = document.getElementById('host-game-btn');
+    const joinGameBtn = document.getElementById('join-game-btn');
+    const roomCodeInput = document.getElementById('room-code-input');
+    const roomCodeDisplay = document.getElementById('room-code-display');
+    const copyCodeBtn = document.getElementById('copy-code-btn');
+    const playerList = document.getElementById('player-list');
+    const startGameBtn = document.getElementById('start-game-btn');
 
     const levelDescriptors = [
         "a basic", "an improved", "an advanced", "a superior", "a masterful", 
@@ -23,102 +38,206 @@ document.addEventListener('DOMContentLoaded', () => {
         "an arch", "a celestial", "an ethereal", "an astral", "a cosmic"
     ];
 
-    // Game modules
-    const gameState = new GameState();
-    const hourglassManager = new HourglassManager(gameState);
-    const dragHandler = new DragHandler(gameState, gameBoard);
-    const combinationsDisplay = new CombinationsDisplay(gameState);
-    const boardRenderer = new BoardRenderer(
-        gameState, 
-        gameBoard, 
-        dragHandler,
-        handleBlockClick,
-        handleEmptyCellClick
-    );
+    // Game modules (will be initialized later)
+    let gameState, hourglassManager, dragHandler, boardRenderer, combinationsDisplay;
+    let localPlayerState = {};
+    let otherPlayerRenderers = {};
 
-    dragHandler.onIndicatorDrop = (index) => {
-        spawnEarly(index);
-    };
+    function getMyPresence() {
+        return room.presence[room.clientId] || {};
+    }
 
-    // Set up drag completion callback
-    dragHandler.onDragComplete = (boardChanged) => {
-        if (boardChanged) {
-            boardRenderer.renderBlocks();
-            checkAllBlockImages();
-            combinationsDisplay.update();
-        } else {
-            // Re-render to clear selection state if drag was invalid
-            boardRenderer.renderBlocks();
+    // --- LOBBY LOGIC ---
+    hostGameBtn.addEventListener('click', async () => {
+        const difficulty = document.querySelector('.difficulty-btn.selected')?.dataset.difficulty || 'easy';
+        const theme = themeInput.value.trim() || null;
+        
+        await room.updateRoomState({
+            hostId: room.clientId,
+            difficulty,
+            theme,
+            gameStarted: false,
+            blockImages: {},
+        });
+        
+        await room.updatePresence({
+            score: 0,
+            boardState: null,
+            nextSpawnIndices: [],
+        });
+        
+        showLobbyScreen();
+    });
+
+    joinGameBtn.addEventListener('click', async () => {
+        const code = roomCodeInput.value.trim().toUpperCase();
+        if (code) {
+            try {
+                await room.join(code);
+                await room.updatePresence({
+                    score: 0,
+                    boardState: null,
+                    nextSpawnIndices: [],
+                });
+                showLobbyScreen();
+            } catch (e) {
+                alert("Failed to join room. Check the code and try again.");
+                console.error("Join failed", e);
+            }
         }
-    };
+    });
+    
+    startGameBtn.addEventListener('click', () => {
+        if (room.roomState.hostId === room.clientId) {
+            room.updateRoomState({ gameStarted: true });
+        }
+    });
+
+    copyCodeBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(room.roomId).then(() => {
+            copyCodeBtn.textContent = 'Copied!';
+            setTimeout(() => copyCodeBtn.textContent = 'Copy', 2000);
+        });
+    });
+
+    function showLobbyScreen() {
+        titleScreen.classList.remove('active');
+        lobbyScreen.classList.add('active');
+        roomCodeDisplay.textContent = room.roomId;
+        updateLobbyUI();
+    }
+
+    function updateLobbyUI() {
+        if (!lobbyScreen.classList.contains('active')) return;
+        
+        playerList.innerHTML = '';
+        for (const peerId in room.peers) {
+            const peer = room.peers[peerId];
+            const li = document.createElement('li');
+            li.innerHTML = `<img src="${peer.avatarUrl}" alt="${peer.username}"> <span>${peer.username} ${peerId === room.roomState.hostId ? '(Host)' : ''}</span>`;
+            playerList.appendChild(li);
+        }
+
+        if (room.roomState.hostId === room.clientId) {
+            startGameBtn.style.display = 'block';
+        } else {
+            startGameBtn.style.display = 'none';
+        }
+    }
+
+    // --- GAME LOGIC ---
+
+    function initializeGameModules() {
+        gameState = new GameState();
+        hourglassManager = new HourglassManager(gameState);
+        dragHandler = new DragHandler(gameState, gameBoard);
+        combinationsDisplay = new CombinationsDisplay(gameState);
+        boardRenderer = new BoardRenderer(
+            gameState, 
+            gameBoard, 
+            dragHandler,
+            handleBlockClick,
+            handleEmptyCellClick
+        );
+
+        dragHandler.onIndicatorDrop = (index) => spawnEarly(index);
+        dragHandler.onDragComplete = (boardChanged) => {
+            if (boardChanged) {
+                updateMyPresence();
+            } else {
+                boardRenderer.renderBlocks();
+            }
+        };
+    }
+
+    function startGame() {
+        initializeGameModules();
+        const { difficulty, theme } = room.roomState;
+
+        const config = gameState.initializeGame(difficulty, theme, room.roomState.blockImages);
+        localPlayerState = { ...getMyPresence() };
+
+        if (room.roomState.hostId === room.clientId) {
+            // Host initializes board states for everyone
+            const initialPresenceUpdates = {};
+            for (const peerId in room.peers) {
+                const initialBoardState = new Array(gameState.gridSize * gameState.gridSize).fill(0);
+                for (let i = 0; i < config.initialBlocks; i++) {
+                     const emptyCells = initialBoardState.map((v, i) => v === 0 ? i : -1).filter(i => i !== -1);
+                     if (emptyCells.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * emptyCells.length);
+                        const boardIndex = emptyCells.splice(randomIndex, 1)[0];
+                        initialBoardState[boardIndex] = gameState.getNewBlockValue(0);
+                     }
+                }
+                room.updatePresenceFor(peerId, { boardState: initialBoardState });
+            }
+        }
+        
+        lobbyScreen.classList.remove('active');
+        gameScreen.classList.add('active');
+        header.classList.add('in-game');
+        
+        setTimeout(() => {
+            hourglassManager.create(
+                config.sandGrains, 
+                spawnRandomBlock,
+                updateSpawnIndicators
+            );
+        }, 100);
+    }
+
+    function updateMyPresence() {
+        const myPresence = getMyPresence();
+        myPresence.score = gameState.score;
+        myPresence.boardState = gameState.boardState;
+        myPresence.nextSpawnIndices = gameState.nextSpawnIndices;
+        room.updatePresence(myPresence);
+    }
 
     function prepareNextSpawn() {
+        const emptyCells = gameState.getEmptyCells();
+        if(emptyCells.length === 0) return;
+
         gameState.nextSpawnIndices = [];
-        
         let numToSpawn = 1;
         const difficulty = gameState.currentDifficulty;
 
-        if (difficulty === 'medium') {
-            if (Math.random() < 0.5) numToSpawn = 2;
-        } else if (difficulty === 'hard') {
-            if (Math.random() < 0.9) {
-                numToSpawn = Math.random() < 0.5 ? 3 : 2;
-            } else {
-                numToSpawn = 1;
-            }
-        }
+        if (difficulty === 'medium') { if (Math.random() < 0.5) numToSpawn = 2; } 
+        else if (difficulty === 'hard') { numToSpawn = Math.random() < 0.5 ? 3 : 2; }
         
-        const emptyCells = gameState.getEmptyCells();
-        const availableSlots = emptyCells.length;
+        const actualNumToSpawn = Math.min(numToSpawn, emptyCells.length);
 
-        const actualNumToSpawn = Math.min(numToSpawn, availableSlots);
-
-        if (actualNumToSpawn === 0 && availableSlots > 0 && gameState.nextSpawnIndices.length === 0) {
-             // Edge case: if we can't spawn the desired number, but there's space,
-             // and no spawns are queued, queue at least one.
-             const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
-             const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
-             gameState.nextSpawnIndices.push(boardIndex);
-        } else {
-            for (let i = 0; i < actualNumToSpawn; i++) {
-                const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
-                const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
-                gameState.nextSpawnIndices.push(boardIndex);
-            }
+        for (let i = 0; i < actualNumToSpawn; i++) {
+            const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
+            const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
+            gameState.nextSpawnIndices.push(boardIndex);
         }
-
-        boardRenderer.renderIndicators();
+        updateMyPresence();
     }
 
     function spawnRandomBlock() {
-        const spawnIndices = gameState.nextSpawnIndices;
+        const spawnIndices = [...gameState.nextSpawnIndices];
 
         if (spawnIndices.length === 0 && gameState.getEmptyCells().length === 0) {
             if (gameState.currentDifficulty === 'zen') {
-                console.log("Grid full in Zen mode - continuing without spawning");
-                hourglassManager.reset();
-                return;
+                 hourglassManager.reset();
+                 return;
             } else {
-                console.log("Game Over - No empty cells to spawn a new block.");
-                gameOver();
-                return;
+                 gameOver();
+                 return;
             }
         }
 
-        // Spawn the blocks
         spawnIndices.forEach(boardIndex => {
-            // Only spawn if the index is still in the queue (wasn't spawned early)
             if (gameState.nextSpawnIndices.includes(boardIndex)) {
                 gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
             }
         });
         
         gameState.nextSpawnIndices = [];
-
-        boardRenderer.render();
-        checkAllBlockImages();
-        combinationsDisplay.update();
         prepareNextSpawn();
+        updateMyPresence();
     }
 
     function gameOver() {
@@ -126,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alert(`Game Over! Final Score: ${gameState.score}`);
         showTitleScreen();
     }
-
+    
     function handleBlockClick(clickedIndex) {
         if (dragHandler.isDragging) return;
         
@@ -166,12 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
             boardChanged = true;
         } else {
             gameState.selectBlock(clickedIndex);
+            boardRenderer.renderBlocks();
         }
-
-        boardRenderer.renderBlocks();
+        
         if (boardChanged) {
-            checkAllBlockImages();
-            combinationsDisplay.update();
+            updateMyPresence();
         }
     }
 
@@ -183,12 +301,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (gameState.currentDifficulty === 'easy' || gameState.currentDifficulty === 'zen') {
                 spawnEarly(clickedIndex);
             }
-            // On other difficulties, or if it's an indicator, we do nothing else.
             return;
         }
         
         let boardChanged = false;
-
         if (!gameState.hasSelectedBlock()) {
             gameState.placeBlock(clickedIndex, gameState.getNewBlockValue());
             boardChanged = true;
@@ -203,14 +319,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 boardChanged = true;
             } else {
                 gameState.deselectBlock();
+                boardRenderer.renderBlocks();
             }
         }
         
-        boardRenderer.renderBlocks();
-
         if (boardChanged) {
-            checkAllBlockImages();
-            combinationsDisplay.update();
+            updateMyPresence();
         }
     }
 
@@ -218,125 +332,183 @@ document.addEventListener('DOMContentLoaded', () => {
         if ((gameState.currentDifficulty !== 'easy' && gameState.currentDifficulty !== 'zen') || !gameState.nextSpawnIndices.includes(index)) {
             return;
         }
-
-        // Place the new block
         gameState.placeBlock(index, gameState.getNewBlockValue());
-
-        // Remove from the spawn queue
         const queueIndex = gameState.nextSpawnIndices.indexOf(index);
         if (queueIndex > -1) {
             gameState.nextSpawnIndices.splice(queueIndex, 1);
         }
-
-        // Re-render the board to show the new block and remove the indicator
-        boardRenderer.render();
-        checkAllBlockImages();
-        combinationsDisplay.update();
+        updateMyPresence();
     }
-
+    
     async function generateImageForValue(value) {
-        if (!gameState.theme || gameState.getImageForValue(value)) {
+        const currentImages = room.roomState.blockImages || {};
+        if (!room.roomState.theme || currentImages[value]) {
             return;
         }
 
-        // Set status to loading to prevent multiple requests
-        gameState.setImageForValue(value, 'loading');
-        boardRenderer.renderBlocks(); // Show loading indicator
-
         try {
+            // Claim generation
+            await room.updateRoomState({ blockImages: { ...currentImages, [value]: 'generating' } });
+            
+            // Re-check in case another player claimed it first
+            if (room.roomState.blockImages[value] !== 'generating') return;
+
             const descriptor = levelDescriptors[value - 1] || `an evolved`;
             const result = await websim.imageGen({
-                prompt: `A cute, simple icon of ${descriptor} ${gameState.theme}. Sticker style, on a white background. Do not include any text or numbers.`,
+                prompt: `A cute, simple icon of ${descriptor} ${room.roomState.theme}. Sticker style, on a white background. Do not include any text or numbers.`,
                 transparent: false,
                 aspect: "square"
             });
-            gameState.setImageForValue(value, result.url);
+            await room.updateRoomState({ blockImages: { ...room.roomState.blockImages, [value]: result.url } });
         } catch (error) {
             console.error(`Failed to generate image for value ${value}:`, error);
-            // Revert status if generation fails
-            gameState.setImageForValue(value, null);
+            const revertedImages = { ...room.roomState.blockImages };
+            delete revertedImages[value];
+            await room.updateRoomState({ blockImages: revertedImages });
         }
-
-        boardRenderer.renderBlocks();
-        combinationsDisplay.update();
     }
 
     function checkAllBlockImages() {
-        if (!gameState.theme) return;
-
+        if (!room.roomState.theme) return;
         const uniqueValues = [...new Set(gameState.boardState.filter(v => v > 0))];
         uniqueValues.forEach(value => {
-            if (!gameState.getImageForValue(value)) {
+            if (!room.roomState.blockImages[value]) {
                 generateImageForValue(value);
             }
         });
     }
 
-    function startGame(difficulty) {
-        const theme = themeInput.value.trim() || null;
-        const config = gameState.initializeGame(difficulty, theme);
-        hourglassManager.destroy();
-
-        if (difficulty === 'hard') {
-            combinationsContainer.style.display = 'none';
-        } else {
-            combinationsContainer.style.display = 'block';
-        }
-
-        // Spawn initial blocks without generating images for them yet
-        for (let i = 0; i < config.initialBlocks; i++) {
-             const emptyCells = gameState.getEmptyCells();
-             if (emptyCells.length > 0) {
-                const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
-                const boardIndex = emptyCells.splice(randomEmptyCellIndex, 1)[0];
-                gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
-             }
-        }
-        
-        // Now render, check for all images, and update combinations
-        boardRenderer.render();
-        checkAllBlockImages();
-        combinationsDisplay.update();
-        prepareNextSpawn();
-
-        titleScreen.classList.remove('active');
-        gameScreen.classList.add('active');
-        header.classList.add('in-game');
-        
-        setTimeout(() => {
-            hourglassManager.create(
-                config.sandGrains, 
-                spawnRandomBlock,
-                updateSpawnIndicators
-            );
-        }, 100);
-
-        requestAnimationFrame(() => {
-            boardRenderer.render();
-        });
-    }
-    
     function updateSpawnIndicators(progress) {
-        const indicators = document.querySelectorAll('.spawn-indicator');
+        const indicators = document.querySelectorAll('#game-board .spawn-indicator');
         indicators.forEach(indicator => {
             indicator.style.opacity = 0.2 + (progress * 0.7);
         });
     }
     
     function showTitleScreen() {
+        room.leave();
         titleScreen.classList.add('active');
         gameScreen.classList.remove('active');
+        lobbyScreen.classList.remove('active');
         header.classList.remove('in-game');
-        gameBoard.innerHTML = '';
-        hourglassManager.destroy();
-        gameState.reset();
-        combinationsContainer.style.display = 'block';
+        otherPlayersContainer.innerHTML = '';
+        if (hourglassManager) hourglassManager.destroy();
+        gameState?.reset();
+        otherPlayerRenderers = {};
     }
 
-    // Event listeners
+    // --- RENDER OTHER PLAYERS ---
+    function renderOtherPlayers() {
+        otherPlayersContainer.innerHTML = '';
+        otherPlayerRenderers = {};
+
+        for (const peerId in room.peers) {
+            if (peerId === room.clientId) continue;
+
+            const peer = room.peers[peerId];
+            const presence = room.presence[peerId];
+            if (!presence || !presence.boardState) continue;
+
+            const container = document.createElement('div');
+            container.classList.add('other-player-board');
+            container.id = `player-board-container-${peerId}`;
+
+            container.innerHTML = `
+                <div class="other-player-header">
+                    <img src="${peer.avatarUrl}" alt="${peer.username}">
+                    <div class="other-player-info">
+                        <div class="username">${peer.username}</div>
+                        <div class="score">Score: <span id="score-${peerId}">${presence.score || 0}</span></div>
+                    </div>
+                </div>
+                <div class="game-board-wrapper">
+                    <div class="game-board" id="board-${peerId}"></div>
+                </div>
+            `;
+            otherPlayersContainer.appendChild(container);
+            
+            const otherGameState = new GameState();
+            otherGameState.initializeGame(room.roomState.difficulty, room.roomState.theme, room.roomState.blockImages);
+            otherGameState.boardState = presence.boardState;
+
+            otherPlayerRenderers[peerId] = new BoardRenderer(otherGameState, container.querySelector(`#board-${peerId}`), null, ()=>{}, ()=>{});
+            otherPlayerRenderers[peerId].render();
+        }
+    }
+
+    function updateOtherPlayerBoard(peerId) {
+        const renderer = otherPlayerRenderers[peerId];
+        const presence = room.presence[peerId];
+        if (!renderer || !presence || !presence.boardState) return;
+
+        // Update score
+        const scoreSpan = document.getElementById(`score-${peerId}`);
+        if (scoreSpan) scoreSpan.textContent = presence.score || 0;
+        
+        // Update game state for the renderer
+        renderer.gameState.boardState = presence.boardState;
+        renderer.gameState.nextSpawnIndices = presence.nextSpawnIndices || [];
+        renderer.gameState.blockImages = room.roomState.blockImages;
+        
+        renderer.render();
+    }
+
+    // --- EVENT LISTENERS & SUBSCRIPTIONS ---
+    room.subscribePresence((presence) => {
+        updateLobbyUI();
+
+        if (room.roomState.gameStarted) {
+             const myPresence = presence[room.clientId];
+             if (myPresence && myPresence.boardState && gameState) {
+                // Update local game state from presence
+                gameState.boardState = myPresence.boardState;
+                gameState.score = myPresence.score;
+                gameState.nextSpawnIndices = myPresence.nextSpawnIndices;
+                
+                document.getElementById('score').textContent = gameState.score;
+                boardRenderer.render();
+                combinationsDisplay.update();
+                checkAllBlockImages();
+             }
+
+             // Update other players
+             let needsFullRender = false;
+             for (const peerId in room.peers) {
+                 if (peerId !== room.clientId && !otherPlayerRenderers[peerId]) {
+                    needsFullRender = true;
+                    break;
+                 }
+             }
+
+             if (needsFullRender || Object.keys(room.peers).length - 1 !== Object.keys(otherPlayerRenderers).length) {
+                 renderOtherPlayers();
+             } else {
+                 for (const peerId in otherPlayerRenderers) {
+                     updateOtherPlayerBoard(peerId);
+                 }
+             }
+        }
+    });
+
+    room.subscribeRoomState((roomState) => {
+        updateLobbyUI();
+        if (roomState.gameStarted && !gameScreen.classList.contains('active')) {
+            startGame();
+        }
+        if (gameState && roomState.blockImages) {
+            gameState.blockImages = roomState.blockImages;
+            boardRenderer.renderBlocks();
+            combinationsDisplay.update();
+             for (const peerId in otherPlayerRenderers) {
+                updateOtherPlayerBoard(peerId);
+             }
+        }
+    });
+    
     difficultyButtons.forEach(button => {
         button.addEventListener('click', () => {
-            startGame(button.dataset.difficulty);
+            difficultyButtons.forEach(btn => btn.classList.remove('selected'));
+            button.classList.add('selected');
         });
     });
 
@@ -347,20 +519,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     gameOverlay.addEventListener('click', () => {
-        gameState.deselectBlock();
-        boardRenderer.renderBlocks();
+        if(gameState) {
+            gameState.deselectBlock();
+            boardRenderer.renderBlocks();
+        }
     });
     
     document.addEventListener('click', (event) => {
         if (gameScreen.classList.contains('active') && !gameBoard.contains(event.target) && !combinationsContainer.contains(event.target)) {
-            gameState.deselectBlock();
-            boardRenderer.renderBlocks();
+            if(gameState) {
+                gameState.deselectBlock();
+                boardRenderer.renderBlocks();
+            }
         }
     });
 
     window.addEventListener('resize', () => {
         if (gameScreen.classList.contains('active')) {
             boardRenderer.render();
+            for(const peerId in otherPlayerRenderers) {
+                otherPlayerRenderers[peerId].render();
+            }
         }
     });
 });
