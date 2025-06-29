@@ -369,6 +369,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         gameScreen.classList.add('active');
         header.classList.add('in-game');
         carouselWrapper.classList.add('in-game');
+        document.body.classList.add('game-active');
         
         setTimeout(() => {
             hourglassManager.create(
@@ -400,6 +401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updatePresence();
         combinationsContainer.style.display = 'block';
         carouselWrapper.classList.remove('in-game');
+        document.body.classList.remove('game-active');
     }
 
     // Event listeners

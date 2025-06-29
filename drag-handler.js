@@ -62,8 +62,8 @@ export class DragHandler {
         const row = Math.floor(index / this.gameState.gridSize);
         const col = index % this.gameState.gridSize;
         
-        const centerX = boardRect.left + gap + col * (cellSize + gap) + cellSize / 2;
-        const centerY = boardRect.top + gap + row * (cellSize + gap) + cellSize / 2;
+        const centerX = boardRect.left + window.scrollX + gap + col * (cellSize + gap) + cellSize / 2;
+        const centerY = boardRect.top + window.scrollY + gap + row * (cellSize + gap) + cellSize / 2;
         
         return { x: centerX, y: centerY };
     }
