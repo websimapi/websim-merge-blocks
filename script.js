@@ -445,15 +445,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const carouselTrack = document.getElementById('carousel-track');
         const activePeerClientIds = Object.keys(presence).filter(id => id !== room.clientId && presence[id].isPlaying && presence[id].gridSize > 0);
 
+        // Clear existing clones
+        carouselTrack.querySelectorAll('.peer-game-clone').forEach(clone => clone.remove());
+
         // 1. Prune disconnected/inactive peers from the DOM and peerRenderers
         for (const clientId in peerRenderers) {
             if (!activePeerClientIds.includes(clientId)) {
                 const container = document.getElementById(`peer-${clientId}`);
                 if (container) container.remove();
-                
-                const clone = document.querySelector(`.peer-game-clone[data-clone-id="${clientId}"]`);
-                if(clone) clone.remove();
-
                 delete peerRenderers[clientId];
             }
         }
@@ -486,21 +485,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 peerRenderers[clientId] = { state: peerGameState, renderer: peerRenderer, element: container };
                 
                 carouselTrack.appendChild(container);
-                
-                // Also add the clone for seamless animation
-                const clone = container.cloneNode(true);
-                clone.removeAttribute('id');
-                clone.classList.add('peer-game-clone');
-                clone.dataset.cloneId = clientId; // Add data attribute to find the clone
-                carouselTrack.appendChild(clone);
-                
             }
 
-            // 3. Update the state and re-render the board for both original and clone
+            // 3. Update the state and re-render the board for the original element
             const { state, renderer } = peerRenderers[clientId];
             const hasChanges = state.gridSize !== peerData.gridSize ||
                              JSON.stringify(state.boardState) !== JSON.stringify(peerData.boardState) ||
-                             state.theme !== peerData.theme;
+                             state.theme !== peerData.theme ||
+                             JSON.stringify(state.blockImages) !== JSON.stringify(peerData.blockImages || {});
 
             state.gridSize = peerData.gridSize;
             state.boardState = peerData.boardState;
@@ -516,27 +508,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (room.peers[clientId]) {
                 container.querySelector('.peer-name').textContent = room.peers[clientId].username || 'Player';
             }
-            container.querySelector('.peer-score').textContent = `Score: ${peerData.score}`;
+            container.querySelector('.peer-score').textContent = `Score: ${peerData.score || 0}`;
             
             // Re-render the board if data changed
             if(hasChanges){
                 renderer.render();
             }
-
-            // Update the clone as well
-            const cloneElement = document.querySelector(`.peer-game-clone[data-clone-id="${clientId}"]`);
-            if (cloneElement) {
-                // Clone the updated original's innerHTML to sync it
-                cloneElement.innerHTML = container.innerHTML;
-                if(hasChanges){
-                    // Re-run the renderer on the clone's board
-                     const cloneRenderer = new BoardRenderer(state, cloneElement.querySelector('.peer-game-board'), null, null, null, true);
-                     cloneRenderer.render();
-                }
-            }
         }
+
+        // 4. Re-create all clones after originals are updated
+        const originalContainers = carouselTrack.querySelectorAll('.peer-game-container:not(.peer-game-clone)');
+        originalContainers.forEach(container => {
+            const clone = container.cloneNode(true);
+            clone.removeAttribute('id');
+            clone.classList.add('peer-game-clone');
+            carouselTrack.appendChild(clone);
+        });
         
-        // 4. Manage carousel animation state
+        // 5. Manage carousel animation state
         if (activePeerClientIds.length > 0) {
             carouselTrack.style.animationPlayState = 'running';
         } else {
