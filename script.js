@@ -52,6 +52,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Callbacks for carousel interaction
     carousel.onMergeRequest = handleMergeRequest;
+    carousel.getLocalPlayerState = () => {
+        if (!gameScreen.classList.contains('active')) {
+            return null;
+        }
+        return {
+            clientId: room.clientId,
+            inGame: true,
+            difficulty: gameState.currentDifficulty,
+            theme: gameState.theme,
+            gridSize: gameState.gridSize,
+            boardState: gameState.boardState,
+            blockImages: gameState.blockImages,
+            score: gameState.score,
+        };
+    };
     let pendingMergeData = null;
 
     dragHandler.onIndicatorDrop = (index) => {

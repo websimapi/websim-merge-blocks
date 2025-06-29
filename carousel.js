@@ -15,6 +15,7 @@ export class Carousel {
         this.dragLine = null;
 
         this.onMergeRequest = null; // Callback for script.js
+        this.getLocalPlayerState = null; // Callback to get local game state from script.js
         
         this.init();
         
@@ -50,8 +51,9 @@ export class Carousel {
     }
 
     updateCarousel() {
-        const players = Object.values(this.room.presence || {})
-            .filter(p => p.inGame && p.boardState && p.boardState.length > 0 && p.gridSize);
+        const players = Object.entries(this.room.presence || {})
+            .filter(([id, p]) => p.inGame && p.boardState && p.boardState.length > 0 && p.gridSize)
+            .map(([id, p]) => ({ ...p, clientId: id })); // Add clientId to player data
         
         const slots = this.generateSlots(players);
 
@@ -199,16 +201,32 @@ export class Carousel {
 
         this.removeDragLine();
         document.body.style.cursor = 'default';
-        document.querySelectorAll('.carousel-item').forEach(item => {
+        document.querySelectorAll('.carousel-item, #game-board-wrapper').forEach(item => {
             item.classList.remove('dragging-over');
         });
 
-        const dropTarget = this.getDropTarget(e.clientX, e.clientY);
-        if (dropTarget && dropTarget !== this.dragStartData.element) {
-            const endPlayerDataStr = dropTarget.dataset.playerData;
-            if (endPlayerDataStr && this.onMergeRequest) {
-                const endPlayerData = JSON.parse(endPlayerDataStr);
-                this.onMergeRequest(this.dragStartData.player, endPlayerData);
+        const dropTargetData = this.getDropTarget(e.clientX, e.clientY);
+        
+        if (dropTargetData) {
+            const { type, element } = dropTargetData;
+            
+            if (type === 'carousel' && element !== this.dragStartData.element) {
+                const endPlayerDataStr = element.dataset.playerData;
+                if (endPlayerDataStr && this.onMergeRequest) {
+                    const endPlayerData = JSON.parse(endPlayerDataStr);
+                    // Prevent merging with self if somehow the same client ID appears twice
+                    if (this.dragStartData.player.clientId !== endPlayerData.clientId) {
+                        this.onMergeRequest(this.dragStartData.player, endPlayerData);
+                    }
+                }
+            } else if (type === 'board') {
+                const localPlayerState = this.getLocalPlayerState ? this.getLocalPlayerState() : null;
+                if (localPlayerState && this.onMergeRequest) {
+                    // Prevent merging your own game from the carousel with itself
+                    if (this.dragStartData.player.clientId !== localPlayerState.clientId) {
+                        this.onMergeRequest(this.dragStartData.player, localPlayerState);
+                    }
+                }
             }
         }
         
@@ -218,11 +236,27 @@ export class Carousel {
 
     getDropTarget(x, y) {
         let target = document.elementFromPoint(x, y);
-        // Traverse up to find the carousel-item container
-        while(target && !target.classList.contains('carousel-item')) {
+
+        // Hide drag line so it doesn't interfere with elementFromPoint
+        if (this.dragLine) this.dragLine.style.display = 'none';
+        target = document.elementFromPoint(x, y);
+        if (this.dragLine) this.dragLine.style.display = 'block';
+
+        // Traverse up to find a valid drop target
+        while (target) {
+            if (target.classList.contains('carousel-item')) {
+                // Ensure it's not an empty placeholder item
+                if (target.dataset.playerData) {
+                    return { type: 'carousel', element: target };
+                }
+                return null; // Dropped on an empty item
+            }
+            if (target.id === 'game-board-wrapper') {
+                return { type: 'board', element: target };
+            }
             target = target.parentElement;
         }
-        return target;
+        return null; // No valid target found
     }
     
     updateDragLine(startPos, endPos) {
