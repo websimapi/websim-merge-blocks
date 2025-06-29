@@ -5,6 +5,7 @@
     --grid-cell-color: #ccc0b3;
     --font-color-light: #f9f6f2;
     --font-color-dark: #776e65;
+    --carousel-height: 290px;
 }
 
 body {
@@ -20,6 +21,7 @@ body {
     padding: 20px;
     box-sizing: border-box;
     overflow-x: hidden;
+    position: relative;
 }
 
 #lobby-background {
@@ -27,16 +29,25 @@ body {
     top: 0;
     left: 0;
     width: 100vw;
-    height: 100vh;
+    height: var(--carousel-height);
     z-index: -1;
     display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    padding: 20px;
-    justify-content: center;
-    align-content: flex-start;
-    overflow-y: auto;
+    align-items: center;
+    overflow: hidden;
     background-color: #faf8ef;
+}
+
+#carousel-track {
+    display: flex;
+    gap: 20px;
+    padding: 0 20px;
+    animation: slide 60s linear infinite;
+    flex-shrink: 0; /* Prevents track from shrinking */
+}
+
+@keyframes slide {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
 }
 
 #app {
@@ -45,6 +56,7 @@ body {
     background: transparent;
     border-radius: 12px;
     padding: 20px;
+    margin-top: var(--carousel-height);
 }
 
 header {

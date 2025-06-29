@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const lobbyBackground = document.getElementById('lobby-background');
     const playerList = document.getElementById('player-list');
 
+    // Create a track for the peer game carousel
+    const carouselTrack = document.getElementById('carousel-track');
+
     const levelDescriptors = [
         "a basic", "an improved", "an advanced", "a superior", "a masterful", 
         "an ultimate", "a legendary", "a mythical", "a divine", "a supreme",
@@ -461,7 +464,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                         <div class="peer-game-board"></div>
                     `;
-                    lobbyBackground.appendChild(container);
+                    carouselTrack.appendChild(container);
                     
                     const peerGameState = new GameState();
                     const peerBoard = container.querySelector('.peer-game-board');
