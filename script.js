@@ -443,6 +443,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function renderPeerGames(presence) {
         const activePeerIds = [];
+        const originalContainers = [];
+
+        // Prune disconnected peers first
+        for (const clientId in peerRenderers) {
+            if (!presence[clientId] || !presence[clientId].isPlaying) {
+                let container = document.getElementById(`peer-${clientId}`);
+                if (container) container.remove();
+                delete peerRenderers[clientId];
+            }
+        }
 
         for (const clientId in presence) {
             if (clientId === room.clientId) continue;
@@ -456,21 +466,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                     container = document.createElement('div');
                     container.id = `peer-${clientId}`;
                     container.className = 'peer-game-container';
+                    
+                    const peerGameState = new GameState();
+                    const peerBoard = document.createElement('div');
+                    peerBoard.className = 'peer-game-board';
                     container.innerHTML = `
                         <div class="peer-header">
                             <img src="${room.peers[clientId]?.avatarUrl || ''}" alt="${room.peers[clientId]?.username || ''}">
                             <span class="peer-name">${room.peers[clientId]?.username || 'Player'}</span>
                             <span class="peer-score"></span>
                         </div>
-                        <div class="peer-game-board"></div>
                     `;
-                    carouselTrack.appendChild(container);
+                    container.appendChild(peerBoard);
                     
-                    const peerGameState = new GameState();
-                    const peerBoard = container.querySelector('.peer-game-board');
                     const peerRenderer = new BoardRenderer(peerGameState, peerBoard, null, null, null, true);
                     peerRenderers[clientId] = { state: peerGameState, renderer: peerRenderer };
                 }
+
+                originalContainers.push(container);
 
                 const { state, renderer } = peerRenderers[clientId];
                 state.gridSize = peerData.gridSize;
@@ -478,25 +491,45 @@ document.addEventListener('DOMContentLoaded', async () => {
                 state.theme = peerData.theme;
                 state.blockImages = peerData.blockImages || {};
                 
+                const peerHeaderImg = container.querySelector('.peer-header img');
+                if (peerHeaderImg.src !== room.peers[clientId]?.avatarUrl) {
+                    peerHeaderImg.src = room.peers[clientId]?.avatarUrl || '';
+                    peerHeaderImg.alt = room.peers[clientId]?.username || '';
+                }
+                container.querySelector('.peer-name').textContent = room.peers[clientId]?.username || 'Player';
                 container.querySelector('.peer-score').textContent = `Score: ${peerData.score}`;
                 
                 renderer.render();
-            } else {
-                 let container = document.getElementById(`peer-${clientId}`);
-                 if (container) {
-                     container.remove();
-                     delete peerRenderers[clientId];
-                 }
             }
         }
         
-        // Cleanup for disconnected peers
-        for (const clientId in peerRenderers) {
-            if (!activePeerIds.includes(clientId)) {
-                let container = document.getElementById(`peer-${clientId}`);
-                if (container) container.remove();
-                delete peerRenderers[clientId];
+        // Update carousel track
+        const carouselTrack = document.getElementById('carousel-track');
+        carouselTrack.innerHTML = ''; // Clear previous content including clones
+
+        if (originalContainers.length > 0) {
+            originalContainers.forEach(c => carouselTrack.appendChild(c));
+            
+            // Check if we need to animate
+            const trackWidth = carouselTrack.scrollWidth;
+            const containerWidth = carouselTrack.parentElement.offsetWidth;
+
+            if (trackWidth > containerWidth) {
+                // Duplicate for smooth animation
+                originalContainers.forEach(c => {
+                    const clone = c.cloneNode(true);
+                    // The renderer for the clone needs to be managed separately if it has complex logic,
+                    // but since it's just visual, cloning the final state is enough.
+                    clone.removeAttribute('id'); // Clones shouldn't have IDs
+                    clone.classList.add('peer-game-clone');
+                    carouselTrack.appendChild(clone);
+                });
+                carouselTrack.style.animationPlayState = 'running';
+            } else {
+                carouselTrack.style.animationPlayState = 'paused';
             }
+        } else {
+            carouselTrack.style.animationPlayState = 'paused';
         }
     }
 
