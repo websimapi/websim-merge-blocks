@@ -510,24 +510,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (originalContainers.length > 0) {
             originalContainers.forEach(c => carouselTrack.appendChild(c));
             
-            // Check if we need to animate
-            const trackWidth = carouselTrack.scrollWidth;
-            const containerWidth = carouselTrack.parentElement.offsetWidth;
-
-            if (trackWidth > containerWidth) {
-                // Duplicate for smooth animation
-                originalContainers.forEach(c => {
-                    const clone = c.cloneNode(true);
-                    // The renderer for the clone needs to be managed separately if it has complex logic,
-                    // but since it's just visual, cloning the final state is enough.
-                    clone.removeAttribute('id'); // Clones shouldn't have IDs
-                    clone.classList.add('peer-game-clone');
-                    carouselTrack.appendChild(clone);
-                });
-                carouselTrack.style.animationPlayState = 'running';
-            } else {
-                carouselTrack.style.animationPlayState = 'paused';
-            }
+            // Always duplicate for animation
+            originalContainers.forEach(c => {
+                const clone = c.cloneNode(true);
+                clone.removeAttribute('id');
+                clone.classList.add('peer-game-clone');
+                carouselTrack.appendChild(clone);
+            });
+            carouselTrack.style.animationPlayState = 'running';
         } else {
             carouselTrack.style.animationPlayState = 'paused';
         }

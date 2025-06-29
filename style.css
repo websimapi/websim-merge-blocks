@@ -5,7 +5,7 @@
     --grid-cell-color: #ccc0b3;
     --font-color-light: #f9f6f2;
     --font-color-dark: #776e65;
-    --carousel-height: 290px;
+    --carousel-height: 220px;
 }
 
 body {
@@ -43,6 +43,7 @@ body {
     padding: 0 20px;
     animation: slide 60s linear infinite;
     flex-shrink: 0; /* Prevents track from shrinking */
+    min-width: 100%;
 }
 
 @keyframes slide {
@@ -456,7 +457,7 @@ h1 {
     flex-direction: column;
     gap: 8px;
     align-items: center;
-    width: 250px;
+    width: 190px;
 }
 
 .peer-header {
@@ -479,8 +480,8 @@ h1 {
 }
 
 .peer-game-board {
-    width: 230px;
-    height: 230px;
+    width: 170px;
+    height: 170px;
     background-color: var(--background-color);
     border-radius: 4px;
     padding: 2px;
