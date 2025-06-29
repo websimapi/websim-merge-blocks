@@ -18,18 +18,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const themeInput = document.getElementById('theme-input');
     const combinationsContainer = document.getElementById('combinations-container');
     const carouselWrapper = document.getElementById('game-carousel-wrapper');
+    const mergeModal = document.getElementById('merge-modal');
+    const mergeWarning = document.getElementById('merge-warning');
+    const mergeDifficultyButtons = document.getElementById('merge-difficulty-buttons');
+    const mergeConfirmBtn = document.getElementById('merge-confirm-btn');
+    const mergeCancelBtn = document.getElementById('merge-cancel-btn');
 
     // Multiplayer setup
     const room = new WebsimSocket();
     await room.initialize();
 
     // Initialize Title Screen Carousel
-    const carousel = new Carousel('game-carousel', room);
-    
-    // Set up carousel merge callback
-    carousel.onMergeRequest = (playerData1, playerData2) => {
-        showMergeDialog(playerData1, playerData2);
-    };
+    new Carousel('game-carousel', room);
 
     const levelDescriptors = [
         "a basic", "an improved", "an advanced", "a superior", "a masterful", 
@@ -49,6 +49,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         handleBlockClick,
         handleEmptyCellClick
     );
+
+    // Callbacks for carousel interaction
+    carousel.onMergeRequest = handleMergeRequest;
+    let pendingMergeData = null;
 
     dragHandler.onIndicatorDrop = (index) => {
         spawnEarly(index);
@@ -156,6 +160,93 @@ document.addEventListener('DOMContentLoaded', async () => {
         hourglassManager.destroy();
         alert(`Game Over! Final Score: ${gameState.score}`);
         showTitleScreen();
+    }
+
+    function handleMergeRequest(startPlayer, endPlayer) {
+        if (!startPlayer || !endPlayer) return;
+
+        pendingMergeData = { startPlayer, endPlayer };
+
+        if (gameScreen.classList.contains('active')) {
+            mergeWarning.textContent = 'This will end your current game and you will lose all progress. Are you sure?';
+        } else {
+            mergeWarning.textContent = '';
+        }
+
+        // Set default difficulty and highlight button
+        const defaultDifficulty = 'easy';
+        pendingMergeData.difficulty = defaultDifficulty;
+        document.querySelectorAll('#merge-difficulty-buttons .difficulty-btn').forEach(btn => {
+            btn.classList.toggle('selected', btn.dataset.difficulty === defaultDifficulty);
+        });
+        
+        mergeModal.style.display = 'flex';
+    }
+
+    function startMergedGame() {
+        if (!pendingMergeData) return;
+
+        const { startPlayer, endPlayer, difficulty } = pendingMergeData;
+        const theme = startPlayer.theme || endPlayer.theme || 'blocks';
+        themeInput.value = theme;
+
+        const combinedBlocks = [
+            ...startPlayer.boardState.filter(v => v > 0),
+            ...endPlayer.boardState.filter(v => v > 0)
+        ];
+
+        // Create a custom game setup function for merged games
+        const setupMergedGame = async () => {
+            const config = gameState.initializeGame(difficulty, theme);
+            hourglassManager.destroy();
+
+            if (difficulty === 'hard') {
+                combinationsContainer.style.display = 'none';
+            } else {
+                combinationsContainer.style.display = 'block';
+            }
+
+            // Place combined blocks onto the new board
+            const emptyCells = gameState.getEmptyCells();
+            // Shuffle for random placement
+            for (let i = emptyCells.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [emptyCells[i], emptyCells[j]] = [emptyCells[j], emptyCells[i]];
+            }
+
+            const blocksToPlace = Math.min(combinedBlocks.length, emptyCells.length);
+            for (let i = 0; i < blocksToPlace; i++) {
+                gameState.placeBlock(emptyCells[i], combinedBlocks[i]);
+            }
+            
+            // Now render, check for all images, and update combinations
+            boardRenderer.render();
+            manageBlockImages();
+            combinationsDisplay.update();
+            updatePresence();
+            prepareNextSpawn();
+
+            titleScreen.classList.remove('active');
+            gameScreen.classList.add('active');
+            header.classList.add('in-game');
+            carouselWrapper.classList.add('in-game');
+            document.body.classList.add('game-active');
+            
+            setTimeout(() => {
+                hourglassManager.create(
+                    config.sandGrains, 
+                    spawnRandomBlock,
+                    updateSpawnIndicators
+                );
+            }, 100);
+
+            requestAnimationFrame(() => {
+                boardRenderer.render();
+            });
+        };
+        
+        // Start the game process
+        setupMergedGame();
     }
 
     function handleBlockClick(clickedIndex) {
@@ -409,90 +500,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.classList.remove('game-active');
     }
 
-    function showMergeDialog(playerData1, playerData2) {
-        const isCurrentlyInGame = gameScreen.classList.contains('active');
-        
-        let message = `Do you want to merge these two games together?\n\n`;
-        message += `Game 1: ${playerData1.theme || 'No theme'} (${playerData1.difficulty || 'unknown'} difficulty, Score: ${playerData1.score || 0})\n`;
-        message += `Game 2: ${playerData2.theme || 'No theme'} (${playerData2.difficulty || 'unknown'} difficulty, Score: ${playerData2.score || 0})\n\n`;
-        
-        if (isCurrentlyInGame) {
-            message += `⚠️ Warning: You are currently in a game. Merging will cause you to lose your current progress!\n\n`;
-        }
-        
-        if (confirm(message)) {
-            const difficulty = prompt('Select difficulty for the merged game:\n- easy\n- medium\n- hard\n- zen', 'easy');
-            
-            if (difficulty && ['easy', 'medium', 'hard', 'zen'].includes(difficulty.toLowerCase())) {
-                startMergedGame(playerData1, playerData2, difficulty.toLowerCase());
-            }
-        }
-    }
-
-    function startMergedGame(playerData1, playerData2, difficulty) {
-        // Combine themes (prefer the first one if they're different)
-        const mergedTheme = playerData1.theme || playerData2.theme || null;
-        
-        // Merge block images from both games
-        const mergedBlockImages = { ...playerData1.blockImages, ...playerData2.blockImages };
-        
-        // Start the game with merged data
-        gameState.initializeGame(difficulty, mergedTheme);
-        gameState.blockImages = mergedBlockImages;
-        
-        // Merge board states by combining unique blocks
-        const allBlocks1 = playerData1.boardState.filter(v => v > 0);
-        const allBlocks2 = playerData2.boardState.filter(v => v > 0);
-        const allBlocks = [...allBlocks1, ...allBlocks2];
-        
-        // Place merged blocks randomly on the new board
-        const emptyCells = gameState.getEmptyCells();
-        const blocksToPlace = Math.min(allBlocks.length, emptyCells.length);
-        
-        for (let i = 0; i < blocksToPlace; i++) {
-            const randomEmptyIndex = Math.floor(Math.random() * emptyCells.length);
-            const cellIndex = emptyCells.splice(randomEmptyIndex, 1)[0];
-            gameState.placeBlock(cellIndex, allBlocks[i]);
-        }
-        
-        // Set merged score as average of both games
-        gameState.score = Math.floor(((playerData1.score || 0) + (playerData2.score || 0)) / 2);
-        document.getElementById('score').textContent = gameState.score;
-        
-        hourglassManager.destroy();
-        const config = gameState.GAME_CONFIG[difficulty];
-
-        if (difficulty === 'hard') {
-            combinationsContainer.style.display = 'none';
-        } else {
-            combinationsContainer.style.display = 'block';
-        }
-
-        boardRenderer.render();
-        manageBlockImages();
-        combinationsDisplay.update();
-        updatePresence();
-        prepareNextSpawn();
-
-        titleScreen.classList.remove('active');
-        gameScreen.classList.add('active');
-        header.classList.add('in-game');
-        carouselWrapper.classList.add('in-game');
-        document.body.classList.add('game-active');
-        
-        setTimeout(() => {
-            hourglassManager.create(
-                config.sandGrains, 
-                spawnRandomBlock,
-                updateSpawnIndicators
-            );
-        }, 100);
-
-        requestAnimationFrame(() => {
-            boardRenderer.render();
-        });
-    }
-
     // Event listeners
     difficultyButtons.forEach(button => {
         button.addEventListener('click', () => {
@@ -522,5 +529,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (gameScreen.classList.contains('active')) {
             boardRenderer.render();
         }
+    });
+
+    // Merge modal listeners
+    mergeCancelBtn.addEventListener('click', () => {
+        mergeModal.style.display = 'none';
+        pendingMergeData = null;
+    });
+
+    mergeConfirmBtn.addEventListener('click', () => {
+        mergeModal.style.display = 'none';
+        startMergedGame();
+        pendingMergeData = null;
+    });
+
+    document.querySelectorAll('#merge-difficulty-buttons .difficulty-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            if (pendingMergeData) {
+                pendingMergeData.difficulty = button.dataset.difficulty;
+                document.querySelectorAll('#merge-difficulty-buttons .difficulty-btn').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                button.classList.add('selected');
+            }
+        });
     });
 });
