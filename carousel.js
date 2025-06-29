@@ -6,18 +6,40 @@ export class Carousel {
             console.error('Carousel container not found');
             return;
         }
+        this.wrapper = this.container.parentElement;
         this.room = room;
-        this.totalSlots = 12; // Maintain total slots for spacing
+        this.totalSlots = 0; // Will be calculated dynamically
         
         this.init();
         
         if (this.room) {
             this.room.subscribePresence(() => this.updateCarousel());
         }
+
+        window.addEventListener('resize', () => this.init());
     }
 
     init() {
+        this.calculateTotalSlots();
         this.updateCarousel();
+    }
+
+    calculateTotalSlots() {
+        if (!this.wrapper) return;
+
+        const itemWidth = 220; // from .carousel-item --carousel-item-size
+        const itemGap = 30; // from .carousel-item --carousel-gap
+        const effectiveItemWidth = itemWidth + itemGap;
+
+        const wrapperWidth = this.wrapper.clientWidth;
+
+        // Calculate how many items are needed to fill the screen, plus one extra
+        // to ensure the scroll effect is seamless.
+        const slotsNeeded = Math.ceil(wrapperWidth / effectiveItemWidth) + 1;
+
+        // Set a minimum number of slots to ensure the carousel doesn't look too empty
+        // on very small screens, based on the user's suggestion.
+        this.totalSlots = Math.max(5, slotsNeeded);
     }
 
     updateCarousel() {
