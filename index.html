@@ -8,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 </head>
 <body>
+    <div id="lobby-background"></div>
     <div id="app">
         <header>
             <button id="home-btn" title="Go to Main Menu">🏠</button>
@@ -33,9 +34,15 @@
                     <div id="game-board"></div>
                     <div id="game-overlay"></div>
                 </div>
-                <div id="combinations-container">
-                    <h3>Possible Merges</h3>
-                    <ul id="combinations-list"></ul>
+                <div id="side-panel">
+                    <div id="player-list-container">
+                        <h3>Players</h3>
+                        <ul id="player-list"></ul>
+                    </div>
+                    <div id="combinations-container">
+                        <h3>Possible Merges</h3>
+                        <ul id="combinations-list"></ul>
+                    </div>
                 </div>
             </div>
         </div>

@@ -5,7 +5,7 @@ import { DragHandler } from './drag-handler.js';
 import { BoardRenderer } from './board-renderer.js';
 import { CombinationsDisplay } from './combinations-display.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // DOM elements
     const titleScreen = document.getElementById('title-screen');
     const gameScreen = document.getElementById('game-screen');
@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
     const themeInput = document.getElementById('theme-input');
     const combinationsContainer = document.getElementById('combinations-container');
+    const lobbyBackground = document.getElementById('lobby-background');
+    const playerList = document.getElementById('player-list');
 
     const levelDescriptors = [
         "a basic", "an improved", "an advanced", "a superior", "a masterful", 
@@ -36,6 +38,26 @@ document.addEventListener('DOMContentLoaded', () => {
         handleEmptyCellClick
     );
 
+    // Multiplayer setup
+    const room = new WebsimSocket();
+    await room.initialize();
+    
+    let peerRenderers = {};
+
+    room.subscribePresence(currentPresence => {
+        updatePlayerList(currentPresence);
+        renderPeerGames(currentPresence);
+    });
+    
+    room.updatePresence({
+        isPlaying: false,
+        score: 0,
+        difficulty: null,
+        theme: null,
+        gridSize: 0,
+        boardState: {},
+    });
+
     dragHandler.onIndicatorDrop = (index) => {
         spawnEarly(index);
     };
@@ -46,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
             boardRenderer.renderBlocks();
             manageBlockImages();
             combinationsDisplay.update();
+            updateMyPresence();
         } else {
             // Re-render to clear selection state if drag was invalid
             boardRenderer.renderBlocks();
@@ -118,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.render();
         manageBlockImages();
         combinationsDisplay.update();
+        updateMyPresence();
         prepareNextSpawn();
     }
 
@@ -172,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (boardChanged) {
             manageBlockImages();
             combinationsDisplay.update();
+            updateMyPresence();
         }
     }
 
@@ -211,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (boardChanged) {
             manageBlockImages();
             combinationsDisplay.update();
+            updateMyPresence();
         }
     }
 
@@ -232,6 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.render();
         manageBlockImages();
         combinationsDisplay.update();
+        updateMyPresence();
     }
 
     async function generateImageForValue(value) {
@@ -259,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         boardRenderer.renderBlocks();
         combinationsDisplay.update();
+        // No need to update presence here, image loading is a client-side effect
     }
 
     function manageBlockImages() {
@@ -334,6 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
         manageBlockImages();
         combinationsDisplay.update();
         prepareNextSpawn();
+        updateMyPresence({ isPlaying: true });
 
         titleScreen.classList.remove('active');
         gameScreen.classList.add('active');
@@ -353,6 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function updateSpawnIndicators(progress) {
+        if (gameState.currentDifficulty === 'zen') return;
         const indicators = document.querySelectorAll('.spawn-indicator');
         indicators.forEach(indicator => {
             indicator.style.opacity = 0.2 + (progress * 0.7);
@@ -367,6 +397,104 @@ document.addEventListener('DOMContentLoaded', () => {
         hourglassManager.destroy();
         gameState.reset();
         combinationsContainer.style.display = 'block';
+
+        updateMyPresence({ isPlaying: false, score: 0 });
+
+        // Also clean up peer renderers in case we were the last one in a game
+        Object.values(peerRenderers).forEach(r => r.renderer.gameBoard.parentElement.remove());
+        peerRenderers = {};
+    }
+
+    function updateMyPresence(extra = {}) {
+        room.updatePresence({
+            isPlaying: gameScreen.classList.contains('active'),
+            score: gameState.score,
+            difficulty: gameState.currentDifficulty,
+            theme: gameState.theme,
+            gridSize: gameState.gridSize,
+            boardState: gameState.boardState,
+            blockImages: gameState.blockImages,
+            ...extra
+        });
+    }
+
+    function updatePlayerList(presence) {
+        playerList.innerHTML = '';
+        const sortedPlayers = Object.values(presence)
+            .map(p => ({ ...p, ...room.peers[p.clientId] }))
+            .filter(p => p.username) // Ensure peer info is loaded
+            .sort((a, b) => b.score - a.score);
+
+        sortedPlayers.forEach(player => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <img src="${player.avatarUrl}" alt="${player.username}">
+                <div class="player-info">
+                    <div class="player-name">${player.username} ${player.clientId === room.clientId ? '(You)' : ''}</div>
+                    <div class="player-score">Score: ${player.score || 0}</div>
+                </div>
+            `;
+            playerList.appendChild(li);
+        });
+    }
+    
+    function renderPeerGames(presence) {
+        const activePeerIds = [];
+
+        for (const clientId in presence) {
+            if (clientId === room.clientId) continue;
+
+            const peerData = presence[clientId];
+            if (peerData.isPlaying && peerData.gridSize > 0) {
+                activePeerIds.push(clientId);
+                let container = document.getElementById(`peer-${clientId}`);
+
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = `peer-${clientId}`;
+                    container.className = 'peer-game-container';
+                    container.innerHTML = `
+                        <div class="peer-header">
+                            <img src="${room.peers[clientId]?.avatarUrl || ''}" alt="${room.peers[clientId]?.username || ''}">
+                            <span class="peer-name">${room.peers[clientId]?.username || 'Player'}</span>
+                            <span class="peer-score"></span>
+                        </div>
+                        <div class="peer-game-board"></div>
+                    `;
+                    lobbyBackground.appendChild(container);
+                    
+                    const peerGameState = new GameState();
+                    const peerBoard = container.querySelector('.peer-game-board');
+                    const peerRenderer = new BoardRenderer(peerGameState, peerBoard, null, null, null, true);
+                    peerRenderers[clientId] = { state: peerGameState, renderer: peerRenderer };
+                }
+
+                const { state, renderer } = peerRenderers[clientId];
+                state.gridSize = peerData.gridSize;
+                state.boardState = peerData.boardState;
+                state.theme = peerData.theme;
+                state.blockImages = peerData.blockImages || {};
+                
+                container.querySelector('.peer-score').textContent = `Score: ${peerData.score}`;
+                
+                renderer.render();
+            } else {
+                 let container = document.getElementById(`peer-${clientId}`);
+                 if (container) {
+                     container.remove();
+                     delete peerRenderers[clientId];
+                 }
+            }
+        }
+        
+        // Cleanup for disconnected peers
+        for (const clientId in peerRenderers) {
+            if (!activePeerIds.includes(clientId)) {
+                let container = document.getElementById(`peer-${clientId}`);
+                if (container) container.remove();
+                delete peerRenderers[clientId];
+            }
+        }
     }
 
     // Event listeners

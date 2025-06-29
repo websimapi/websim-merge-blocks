@@ -1,18 +1,20 @@
 // Board rendering and block interaction module
 export class BoardRenderer {
-    constructor(gameState, gameBoard, dragHandler, onBlockClick, onEmptyCellClick) {
+    constructor(gameState, gameBoard, dragHandler, onBlockClick, onEmptyCellClick, isPeer = false) {
         this.gameState = gameState;
         this.gameBoard = gameBoard;
         this.dragHandler = dragHandler;
         this.onBlockClick = onBlockClick;
         this.onEmptyCellClick = onEmptyCellClick;
+        this.isPeer = isPeer;
     }
     
     render() {
+        if (!this.gameBoard) return;
         this.gameBoard.innerHTML = '';
         
         const boardSize = this.gameBoard.clientWidth;
-        const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
+        const gap = this.isPeer ? 2 : parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
         const cellSize = (boardSize - (this.gameState.gridSize + 1) * gap) / this.gameState.gridSize;
 
         this.gameBoard.style.gridTemplateColumns = `repeat(${this.gameState.gridSize}, 1fr)`;
@@ -27,17 +29,20 @@ export class BoardRenderer {
             }
         }
         
-        this.gameState.nextSpawnIndices.forEach(index => {
-            this.createSpawnIndicator(index, cellSize, gap);
-        });
+        if (!this.isPeer) {
+            this.gameState.nextSpawnIndices.forEach(index => {
+                this.createSpawnIndicator(index, cellSize, gap);
+            });
+        }
     }
     
     renderBlocks() {
+        if (!this.gameBoard) return;
         // Remove only existing blocks
         this.gameBoard.querySelectorAll('.block').forEach(el => el.remove());
 
         const boardSize = this.gameBoard.clientWidth;
-        const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
+        const gap = this.isPeer ? 2 : parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
         const cellSize = (boardSize - (this.gameState.gridSize + 1) * gap) / this.gameState.gridSize;
 
         // Re-create blocks
@@ -49,6 +54,7 @@ export class BoardRenderer {
     }
 
     renderIndicators() {
+        if (!this.gameBoard || this.isPeer) return;
         // Remove only existing indicators
         this.gameBoard.querySelectorAll('.spawn-indicator').forEach(el => el.remove());
         
@@ -65,14 +71,17 @@ export class BoardRenderer {
     createGridCell(index) {
         const cell = document.createElement('div');
         cell.classList.add('grid-cell');
-        cell.addEventListener('click', (e) => {
-            // Prevent clicks from propagating to the overlay if this cell has an indicator
-            const isIndicatorCell = this.gameState.nextSpawnIndices.includes(index);
-            if(isIndicatorCell && (this.gameState.currentDifficulty === 'easy' || this.gameState.currentDifficulty === 'zen')){
-                e.stopPropagation();
-            }
-            this.onEmptyCellClick(index);
-        });
+        
+        if (!this.isPeer) {
+            cell.addEventListener('click', (e) => {
+                // Prevent clicks from propagating to the overlay if this cell has an indicator
+                const isIndicatorCell = this.gameState.nextSpawnIndices.includes(index);
+                if(isIndicatorCell && (this.gameState.currentDifficulty === 'easy' || this.gameState.currentDifficulty === 'zen')){
+                    e.stopPropagation();
+                }
+                this.onEmptyCellClick(index);
+            });
+        }
         this.gameBoard.appendChild(cell);
     }
     
@@ -112,9 +121,11 @@ export class BoardRenderer {
         }
 
         this.positionBlock(block, index, cellSize, gap);
-        this.addBlockInteractions(block, index);
+        if (!this.isPeer) {
+            this.addBlockInteractions(block, index);
+        }
         
-        if (this.gameState.isBlockSelected(index)) {
+        if (!this.isPeer && this.gameState.isBlockSelected(index)) {
             block.classList.add('selected');
         }
 

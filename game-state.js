@@ -13,7 +13,7 @@ export class GameState {
     
     reset() {
         this.gridSize = 0;
-        this.boardState = [];
+        this.boardState = {};
         this.score = 0;
         this.selectedBlockIndex = -1;
         this.currentDifficulty = 'easy';
@@ -33,7 +33,13 @@ export class GameState {
         this.gridSize = config.gridSize;
         this.score = 0;
         this.selectedBlockIndex = -1;
-        this.boardState = new Array(this.gridSize * this.gridSize).fill(0);
+        
+        this.boardState = {};
+        const totalCells = this.gridSize * this.gridSize;
+        for (let i = 0; i < totalCells; i++) {
+            this.boardState[i] = 0;
+        }
+
         this.nextSpawnIndices = [];
         return config;
     }
@@ -77,7 +83,7 @@ export class GameState {
     
     getEmptyCells() {
         const emptyCells = [];
-        for (let i = 0; i < this.boardState.length; i++) {
+        for (let i = 0; i < this.gridSize * this.gridSize; i++) {
             if (this.boardState[i] === 0) {
                 emptyCells.push(i);
             }
