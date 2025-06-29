@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await room.initialize();
 
     // Initialize Title Screen Carousel
-    new Carousel('game-carousel', room);
+    const carousel = new Carousel('game-carousel', room);
 
     const levelDescriptors = [
         "a basic", "an improved", "an advanced", "a superior", "a masterful", 
