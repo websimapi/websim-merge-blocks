@@ -102,6 +102,7 @@ export class Carousel {
         
         if (!playerData) {
             item.classList.add('empty');
+            // An empty item should not be draggable.
             return item;
         }
 
@@ -133,6 +134,9 @@ export class Carousel {
                         cell.style.color = '#776e65';
                     }
                 }
+            } else {
+                // For empty cells, ensure they don't block pointer events from reaching the parent.
+                cell.style.pointerEvents = 'none';
             }
             item.appendChild(cell);
         }
