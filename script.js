@@ -44,28 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     let peerRenderers = {};
 
-    function setupLobbyScroller() {
-        if (document.getElementById('lobby-scroller-wrapper')) return;
-
-        lobbyBackground.innerHTML = '';
-
-        const wrapper = document.createElement('div');
-        wrapper.id = 'lobby-scroller-wrapper';
-        
-        const content1 = document.createElement('div');
-        content1.id = 'lobby-scroller-content-1';
-        content1.className = 'lobby-scroller-content';
-        
-        const content2 = document.createElement('div');
-        content2.id = 'lobby-scroller-content-2';
-        content2.className = 'lobby-scroller-content';
-        
-        wrapper.appendChild(content1);
-        wrapper.appendChild(content2);
-        lobbyBackground.appendChild(wrapper);
-    }
-    setupLobbyScroller();
-
     room.subscribePresence(currentPresence => {
         updatePlayerList(currentPresence);
         renderPeerGames(currentPresence);
@@ -422,12 +400,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         updateMyPresence({ isPlaying: false, score: 0 });
 
-        // Don't remove peer games, just hide them by pausing animation
-        const scroller = document.getElementById('lobby-scroller-wrapper');
-        if (scroller) {
-            scroller.classList.remove('active');
-            scroller.classList.add('paused');
-        }
+        // Also clean up peer renderers in case we were the last one in a game
+        Object.values(peerRenderers).forEach(r => r.renderer.gameBoard.parentElement.remove());
+        peerRenderers = {};
     }
 
     function updateMyPresence(extra = {}) {
@@ -448,7 +423,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const sortedPlayers = Object.values(presence)
             .map(p => ({ ...p, ...room.peers[p.clientId] }))
             .filter(p => p.username) // Ensure peer info is loaded
-            .sort((a, b) => (b.score || 0) - (a.score || 0));
+            .sort((a, b) => b.score - a.score);
 
         sortedPlayers.forEach(player => {
             const li = document.createElement('li');
@@ -464,91 +439,62 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function renderPeerGames(presence) {
-        const scrollerWrapper = document.getElementById('lobby-scroller-wrapper');
-        if (!scrollerWrapper) {
-            setupLobbyScroller();
-        }
-        const scroller1 = document.getElementById('lobby-scroller-content-1');
-        const scroller2 = document.getElementById('lobby-scroller-content-2');
-        
-        const activePeerData = Object.values(presence)
-            .filter(p => p.clientId !== room.clientId && p.isPlaying && p.gridSize > 0);
+        const activePeerIds = [];
 
-        if (activePeerData.length > 0) {
-            scrollerWrapper.classList.add('active');
-            scrollerWrapper.classList.remove('paused');
-        } else {
-            scrollerWrapper.classList.remove('active');
-            scrollerWrapper.classList.add('paused');
-        }
+        for (const clientId in presence) {
+            if (clientId === room.clientId) continue;
 
-        const currentPeerIds = new Set(activePeerData.map(p => p.clientId));
-        const displayedPeerIds = new Set(Array.from(scroller1.children).map(el => el.dataset.clientId));
+            const peerData = presence[clientId];
+            if (peerData.isPlaying && peerData.gridSize > 0) {
+                activePeerIds.push(clientId);
+                let container = document.getElementById(`peer-${clientId}`);
 
-        // Remove peers that are no longer active
-        for (const clientId of displayedPeerIds) {
-            if (!currentPeerIds.has(clientId)) {
-                document.querySelectorAll(`.peer-game-container[data-clientid="${clientId}"]`).forEach(el => el.remove());
-                delete peerRenderers[clientId];
-            }
-        }
-
-        // Add or update peers
-        for (const peerData of activePeerData) {
-            const clientId = peerData.clientId;
-            const peerInfo = room.peers[clientId] || {};
-
-            let container1 = scroller1.querySelector(`.peer-game-container[data-clientid="${clientId}"]`);
-            let container2 = scroller2.querySelector(`.peer-game-container[data-clientid="${clientId}"]`);
-
-            if (!container1) {
-                // Create new peer containers
-                const createContainer = () => {
-                    const container = document.createElement('div');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = `peer-${clientId}`;
                     container.className = 'peer-game-container';
-                    container.dataset.clientId = clientId;
                     container.innerHTML = `
                         <div class="peer-header">
-                            <img src="${peerInfo.avatarUrl || ''}" alt="${peerInfo.username || ''}">
-                            <span class="peer-name">${peerInfo.username || 'Player'}</span>
-                            <span class="peer-score">Score: ${peerData.score || 0}</span>
+                            <img src="${room.peers[clientId]?.avatarUrl || ''}" alt="${room.peers[clientId]?.username || ''}">
+                            <span class="peer-name">${room.peers[clientId]?.username || 'Player'}</span>
+                            <span class="peer-score"></span>
                         </div>
                         <div class="peer-game-board"></div>
                     `;
-                    return container;
-                };
-                container1 = createContainer();
-                container2 = createContainer();
-                scroller1.appendChild(container1);
-                scroller2.appendChild(container2);
+                    lobbyBackground.appendChild(container);
+                    
+                    const peerGameState = new GameState();
+                    const peerBoard = container.querySelector('.peer-game-board');
+                    const peerRenderer = new BoardRenderer(peerGameState, peerBoard, null, null, null, true);
+                    peerRenderers[clientId] = { state: peerGameState, renderer: peerRenderer };
+                }
 
-                // Create renderer
-                const peerGameState = new GameState();
-                const renderer = new BoardRenderer(peerGameState, null, null, null, null, true);
-                peerRenderers[clientId] = { state: peerGameState, renderer };
+                const { state, renderer } = peerRenderers[clientId];
+                state.gridSize = peerData.gridSize;
+                state.boardState = peerData.boardState;
+                state.theme = peerData.theme;
+                state.blockImages = peerData.blockImages || {};
+                
+                container.querySelector('.peer-score').textContent = `Score: ${peerData.score}`;
+                
+                renderer.render();
+            } else {
+                 let container = document.getElementById(`peer-${clientId}`);
+                 if (container) {
+                     container.remove();
+                     delete peerRenderers[clientId];
+                 }
             }
-
-            // Update score
-            container1.querySelector('.peer-score').textContent = `Score: ${peerData.score || 0}`;
-            container2.querySelector('.peer-score').textContent = `Score: ${peerData.score || 0}`;
-
-            // Update and render board
-            const { state, renderer } = peerRenderers[clientId];
-            state.gridSize = peerData.gridSize;
-            state.boardState = peerData.boardState;
-            state.theme = peerData.theme;
-            state.blockImages = peerData.blockImages || {};
-            
-            renderer.gameBoard = container1.querySelector('.peer-game-board');
-            renderer.render();
-
-            renderer.gameBoard = container2.querySelector('.peer-game-board');
-            renderer.render();
         }
-
-        const numPeers = activePeerData.length;
-        const duration = numPeers > 0 ? Math.max(20, numPeers * 15) : 60;
-        scrollerWrapper.style.animationDuration = `${duration}s`;
+        
+        // Cleanup for disconnected peers
+        for (const clientId in peerRenderers) {
+            if (!activePeerIds.includes(clientId)) {
+                let container = document.getElementById(`peer-${clientId}`);
+                if (container) container.remove();
+                delete peerRenderers[clientId];
+            }
+        }
     }
 
     // Event listeners
