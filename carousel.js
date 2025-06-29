@@ -180,7 +180,7 @@ export class Carousel {
     }
 
     handleDragMove(e) {
-        if (!this.isDragging || !e) return;
+        if (!this.isDragging || !this.dragStartData) return;
 
         const startPos = { x: this.dragStartData.startX, y: this.dragStartData.startY };
         const currentPos = { x: e.clientX, y: e.clientY };
