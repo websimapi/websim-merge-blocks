@@ -18,8 +18,8 @@ export class DragHandler {
             this.handleDragMove(e.clientX, e.clientY);
         });
 
-        document.addEventListener('mouseup', () => {
-            this.handleDragEnd();
+        document.addEventListener('mouseup', (e) => {
+            this.handleDragEnd(e.clientX, e.clientY);
         });
 
         // Global touch events
@@ -31,15 +31,33 @@ export class DragHandler {
             }
         });
 
-        document.addEventListener('touchend', () => {
-            this.handleDragEnd();
+        document.addEventListener('touchend', (e) => {
+            if (this.isDragging) {
+                const touch = e.changedTouches[0];
+                this.handleDragEnd(touch.clientX, touch.clientY);
+            } else {
+                 this.handleDragEnd();
+            }
         });
     }
     
     getIndexFromPosition(x, y) {
         const boardRect = this.gameBoard.getBoundingClientRect();
-        const relativeX = x - boardRect.left;
-        const relativeY = y - boardRect.top;
+        
+        // Account for CSS scaling on the container
+        const gameContainer = document.getElementById('game-container');
+        const containerRect = gameContainer.getBoundingClientRect();
+        const style = window.getComputedStyle(gameContainer);
+        const transform = style.transform;
+        
+        let scale = 1;
+        if (transform && transform !== 'none') {
+            const matrix = new DOMMatrix(transform);
+            scale = matrix.a; // Assuming uniform scaling (matrix.a === matrix.d)
+        }
+
+        const relativeX = (x - boardRect.left) / scale;
+        const relativeY = (y - boardRect.top) / scale;
         
         const boardSize = this.gameBoard.clientWidth;
         const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
@@ -110,11 +128,12 @@ export class DragHandler {
         this.dragStartIndex = startIndex;
         this.gameState.selectBlock(startIndex);
         
+        // The visual line should start exactly where the user clicked.
         this.dragStartPos = { x: clientX, y: clientY };
         
         // Initially, the line is from the start point to itself (zero length)
         // It will be updated by the first handleDragMove call.
-        this.createDragLine(this.dragStartPos, { x: clientX, y: clientY });
+        this.createDragLine(this.dragStartPos, this.dragStartPos);
         
         return true;
     }
@@ -125,34 +144,34 @@ export class DragHandler {
         this.createDragLine(this.dragStartPos, { x: clientX, y: clientY });
         
         const currentIndex = this.getIndexFromPosition(clientX, clientY);
-        if (currentIndex !== this.dragEndIndex) {
-            this.dragEndIndex = currentIndex;
-        }
+        // We don't need to update dragEndIndex on move, we can get it once on drop.
     }
     
-    handleDragEnd() {
+    handleDragEnd(clientX, clientY) {
         if (!this.isDragging) return;
         
         this.removeDragLine();
         
         let boardChanged = false;
+        
+        const endIndex = this.getIndexFromPosition(clientX, clientY);
 
-        const isTargetingIndicator = this.dragEndIndex !== -1 && this.gameState.nextSpawnIndices.includes(this.dragEndIndex);
+        const isTargetingIndicator = endIndex !== -1 && this.gameState.nextSpawnIndices.includes(endIndex);
 
-        if (this.dragEndIndex !== -1 && this.dragEndIndex !== this.dragStartIndex) {
+        if (endIndex !== -1 && endIndex !== this.dragStartIndex) {
              if (isTargetingIndicator && (this.gameState.currentDifficulty === 'easy' || this.gameState.currentDifficulty === 'zen')) {
                 if (this.onIndicatorDrop) {
-                    this.onIndicatorDrop(this.dragEndIndex);
+                    this.onIndicatorDrop(endIndex);
                 }
                 // The drop action itself doesn't change the board (the spawn does), so boardChanged remains false.
             } else {
-                boardChanged = this.processDragAction(this.dragStartIndex, this.dragEndIndex);
+                boardChanged = this.processDragAction(this.dragStartIndex, endIndex);
             }
         }
         
         this.isDragging = false;
         this.dragStartIndex = -1;
-        this.dragEndIndex = -1;
+        this.dragEndIndex = -1; // Reset this for safety, though it's no longer used for the final position
         this.dragStartPos = { x: 0, y: 0 };
         this.gameState.deselectBlock();
         
