@@ -7,6 +7,7 @@ export class DragHandler {
         this.dragStartIndex = -1;
         this.dragEndIndex = -1;
         this.dragLine = null;
+        this.dragStartPos = { x: 0, y: 0 };
         
         this.setupGlobalEvents();
     }
@@ -109,8 +110,11 @@ export class DragHandler {
         this.dragStartIndex = startIndex;
         this.gameState.selectBlock(startIndex);
         
-        const startPos = this.getBlockCenterPosition(startIndex);
-        this.createDragLine(startPos, { x: clientX, y: clientY });
+        this.dragStartPos = { x: clientX, y: clientY };
+        
+        // Initially, the line is from the start point to itself (zero length)
+        // It will be updated by the first handleDragMove call.
+        this.createDragLine(this.dragStartPos, { x: clientX, y: clientY });
         
         return true;
     }
@@ -118,8 +122,7 @@ export class DragHandler {
     handleDragMove(clientX, clientY) {
         if (!this.isDragging) return;
         
-        const startPos = this.getBlockCenterPosition(this.dragStartIndex);
-        this.createDragLine(startPos, { x: clientX, y: clientY });
+        this.createDragLine(this.dragStartPos, { x: clientX, y: clientY });
         
         const currentIndex = this.getIndexFromPosition(clientX, clientY);
         if (currentIndex !== this.dragEndIndex) {
@@ -150,6 +153,7 @@ export class DragHandler {
         this.isDragging = false;
         this.dragStartIndex = -1;
         this.dragEndIndex = -1;
+        this.dragStartPos = { x: 0, y: 0 };
         this.gameState.deselectBlock();
         
         // Trigger board re-render after drag operations
