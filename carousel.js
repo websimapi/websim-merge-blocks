@@ -10,6 +10,13 @@ export class Carousel {
         this.room = room;
         this.totalSlots = 0; // Will be calculated dynamically
         
+        // Drag state
+        this.isDragging = false;
+        this.dragStartItem = null;
+        this.dragLine = null;
+        this.dragStartPos = { x: 0, y: 0 };
+        this.onMergeRequest = null; // Callback for merge requests
+        
         this.init();
         
         if (this.room) {
@@ -17,6 +24,36 @@ export class Carousel {
         }
 
         window.addEventListener('resize', () => this.init());
+        this.setupGlobalDragEvents();
+    }
+
+    setupGlobalDragEvents() {
+        document.addEventListener('mousemove', (e) => {
+            if (this.isDragging) {
+                this.handleDragMove(e.clientX, e.clientY);
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (this.isDragging) {
+                this.handleDragEnd(e.clientX, e.clientY);
+            }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (this.isDragging) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                this.handleDragMove(touch.clientX, touch.clientY);
+            }
+        });
+
+        document.addEventListener('touchend', (e) => {
+            if (this.isDragging) {
+                const touch = e.changedTouches[0];
+                this.handleDragEnd(touch.clientX, touch.clientY);
+            }
+        });
     }
 
     init() {
@@ -107,6 +144,12 @@ export class Carousel {
         item.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
         item.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
 
+        // Store player data on the item for drag operations
+        item.playerData = playerData;
+
+        // Add drag functionality
+        this.addDragInteraction(item);
+
         for (let i = 0; i < boardState.length; i++) {
             const cell = document.createElement('div');
             cell.classList.add('carousel-cell');
@@ -127,6 +170,165 @@ export class Carousel {
             item.appendChild(cell);
         }
         return item;
+    }
+
+    addDragInteraction(item) {
+        if (item.classList.contains('empty')) return;
+
+        let dragStarted = false;
+        let startTime = 0;
+
+        // Mouse events
+        item.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            dragStarted = false;
+            startTime = Date.now();
+            
+            const mouseMove = (moveEvent) => {
+                const timeDiff = Date.now() - startTime;
+                const distance = Math.sqrt(
+                    Math.pow(moveEvent.clientX - e.clientX, 2) + 
+                    Math.pow(moveEvent.clientY - e.clientY, 2)
+                );
+                
+                if ((distance > 10 || timeDiff > 200) && !dragStarted) {
+                    dragStarted = true;
+                    this.handleDragStart(item, e.clientX, e.clientY);
+                    document.removeEventListener('mousemove', mouseMove);
+                    document.removeEventListener('mouseup', mouseUp);
+                }
+            };
+            
+            const mouseUp = () => {
+                document.removeEventListener('mousemove', mouseMove);
+                document.removeEventListener('mouseup', mouseUp);
+            };
+            
+            document.addEventListener('mousemove', mouseMove);
+            document.addEventListener('mouseup', mouseUp);
+        });
+
+        // Touch events
+        item.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            dragStarted = false;
+            startTime = Date.now();
+            const touch = e.touches[0];
+            const startX = touch.clientX;
+            const startY = touch.clientY;
+            
+            const touchMove = (moveEvent) => {
+                const currentTouch = moveEvent.touches[0];
+                const timeDiff = Date.now() - startTime;
+                const distance = Math.sqrt(
+                    Math.pow(currentTouch.clientX - startX, 2) + 
+                    Math.pow(currentTouch.clientY - startY, 2)
+                );
+                
+                if ((distance > 15 || timeDiff > 250) && !dragStarted) {
+                    dragStarted = true;
+                    this.handleDragStart(item, startX, startY);
+                    document.removeEventListener('touchmove', touchMove);
+                    document.removeEventListener('touchend', touchEnd);
+                }
+            };
+            
+            const touchEnd = () => {
+                document.removeEventListener('touchmove', touchMove);
+                document.removeEventListener('touchend', touchEnd);
+            };
+            
+            document.addEventListener('touchmove', touchMove);
+            document.addEventListener('touchend', touchEnd);
+        });
+    }
+
+    handleDragStart(item, clientX, clientY) {
+        this.isDragging = true;
+        this.dragStartItem = item;
+        this.dragStartPos = { x: clientX, y: clientY };
+        
+        // Visual feedback
+        item.style.opacity = '0.5';
+        item.style.transform = 'scale(1.05)';
+        
+        this.createDragLine(this.dragStartPos, this.dragStartPos);
+    }
+
+    handleDragMove(clientX, clientY) {
+        if (!this.isDragging) return;
+        
+        this.createDragLine(this.dragStartPos, { x: clientX, y: clientY });
+    }
+
+    handleDragEnd(clientX, clientY) {
+        if (!this.isDragging) return;
+        
+        this.removeDragLine();
+        
+        // Reset visual feedback
+        if (this.dragStartItem) {
+            this.dragStartItem.style.opacity = '';
+            this.dragStartItem.style.transform = '';
+        }
+        
+        // Find the target carousel item
+        const targetItem = this.getCarouselItemFromPosition(clientX, clientY);
+        
+        if (targetItem && targetItem !== this.dragStartItem && !targetItem.classList.contains('empty')) {
+            // Request merge
+            if (this.onMergeRequest && this.dragStartItem.playerData && targetItem.playerData) {
+                this.onMergeRequest(this.dragStartItem.playerData, targetItem.playerData);
+            }
+        }
+        
+        this.isDragging = false;
+        this.dragStartItem = null;
+        this.dragStartPos = { x: 0, y: 0 };
+    }
+
+    getCarouselItemFromPosition(x, y) {
+        const elements = document.elementsFromPoint(x, y);
+        for (const element of elements) {
+            if (element.classList.contains('carousel-item') && !element.classList.contains('empty')) {
+                return element;
+            }
+        }
+        return null;
+    }
+
+    createDragLine(startPos, endPos) {
+        if (this.dragLine) {
+            this.dragLine.remove();
+        }
+        
+        this.dragLine = document.createElement('div');
+        this.dragLine.style.position = 'fixed';
+        this.dragLine.style.background = '#e74c3c';
+        this.dragLine.style.height = '4px';
+        this.dragLine.style.borderRadius = '2px';
+        this.dragLine.style.pointerEvents = 'none';
+        this.dragLine.style.zIndex = '2000';
+        this.dragLine.style.transformOrigin = 'left center';
+        
+        const deltaX = endPos.x - startPos.x;
+        const deltaY = endPos.y - startPos.y;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        const angle = Math.atan2(deltaY, deltaX);
+        
+        this.dragLine.style.width = distance + 'px';
+        this.dragLine.style.left = startPos.x + 'px';
+        this.dragLine.style.top = startPos.y + 'px';
+        this.dragLine.style.transform = `rotate(${angle}rad)`;
+        
+        document.body.appendChild(this.dragLine);
+    }
+
+    removeDragLine() {
+        if (this.dragLine) {
+            this.dragLine.remove();
+            this.dragLine = null;
+        }
     }
 
     getBlockColor(value) {
