@@ -4,6 +4,7 @@ import { HourglassManager } from './hourglass.js';
 import { DragHandler } from './drag-handler.js';
 import { BoardRenderer } from './board-renderer.js';
 import { CombinationsDisplay } from './combinations-display.js';
+import { Carousel } from './carousel.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM elements
@@ -16,6 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
     const themeInput = document.getElementById('theme-input');
     const combinationsContainer = document.getElementById('combinations-container');
+
+    // Initialize Title Screen Carousel
+    new Carousel('game-carousel');
 
     const levelDescriptors = [
         "a basic", "an improved", "an advanced", "a superior", "a masterful", 
