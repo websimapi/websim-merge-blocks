@@ -448,7 +448,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const sortedPlayers = Object.values(presence)
             .map(p => ({ ...p, ...room.peers[p.clientId] }))
             .filter(p => p.username) // Ensure peer info is loaded
-            .sort((a, b) => b.score - a.score);
+            .sort((a, b) => (b.score || 0) - (a.score || 0));
 
         sortedPlayers.forEach(player => {
             const li = document.createElement('li');
@@ -482,55 +482,68 @@ document.addEventListener('DOMContentLoaded', async () => {
             scrollerWrapper.classList.add('paused');
         }
 
-        const peerHtmls = {};
+        const currentPeerIds = new Set(activePeerData.map(p => p.clientId));
+        const displayedPeerIds = new Set(Array.from(scroller1.children).map(el => el.dataset.clientId));
+
+        // Remove peers that are no longer active
+        for (const clientId of displayedPeerIds) {
+            if (!currentPeerIds.has(clientId)) {
+                document.querySelectorAll(`.peer-game-container[data-clientid="${clientId}"]`).forEach(el => el.remove());
+                delete peerRenderers[clientId];
+            }
+        }
+
+        // Add or update peers
         for (const peerData of activePeerData) {
             const clientId = peerData.clientId;
             const peerInfo = room.peers[clientId] || {};
 
-            let containerHtml = `
-                <div id="peer-${clientId}" class="peer-game-container">
-                    <div class="peer-header">
-                        <img src="${peerInfo.avatarUrl || ''}" alt="${peerInfo.username || ''}">
-                        <span class="peer-name">${peerInfo.username || 'Player'}</span>
-                        <span class="peer-score">Score: ${peerData.score || 0}</span>
-                    </div>
-                    <div class="peer-game-board" data-clientid="${clientId}"></div>
-                </div>
-            `;
-            peerHtmls[clientId] = containerHtml;
-        }
+            let container1 = scroller1.querySelector(`.peer-game-container[data-clientid="${clientId}"]`);
+            let container2 = scroller2.querySelector(`.peer-game-container[data-clientid="${clientId}"]`);
 
-        const allPeersHtml = Object.values(peerHtmls).join('');
-        scroller1.innerHTML = allPeersHtml;
-        scroller2.innerHTML = allPeersHtml;
+            if (!container1) {
+                // Create new peer containers
+                const createContainer = () => {
+                    const container = document.createElement('div');
+                    container.className = 'peer-game-container';
+                    container.dataset.clientId = clientId;
+                    container.innerHTML = `
+                        <div class="peer-header">
+                            <img src="${peerInfo.avatarUrl || ''}" alt="${peerInfo.username || ''}">
+                            <span class="peer-name">${peerInfo.username || 'Player'}</span>
+                            <span class="peer-score">Score: ${peerData.score || 0}</span>
+                        </div>
+                        <div class="peer-game-board"></div>
+                    `;
+                    return container;
+                };
+                container1 = createContainer();
+                container2 = createContainer();
+                scroller1.appendChild(container1);
+                scroller2.appendChild(container2);
 
-        for (const peerData of activePeerData) {
-            const clientId = peerData.clientId;
-            const boardElements = document.querySelectorAll(`.peer-game-board[data-clientid="${clientId}"]`);
-
-            if (!peerRenderers[clientId]) {
+                // Create renderer
                 const peerGameState = new GameState();
-                const peerRenderer = new BoardRenderer(peerGameState, null, null, null, null, true);
-                peerRenderers[clientId] = { state: peerGameState, renderer: peerRenderer };
+                const renderer = new BoardRenderer(peerGameState, null, null, null, null, true);
+                peerRenderers[clientId] = { state: peerGameState, renderer };
             }
 
+            // Update score
+            container1.querySelector('.peer-score').textContent = `Score: ${peerData.score || 0}`;
+            container2.querySelector('.peer-score').textContent = `Score: ${peerData.score || 0}`;
+
+            // Update and render board
             const { state, renderer } = peerRenderers[clientId];
             state.gridSize = peerData.gridSize;
             state.boardState = peerData.boardState;
             state.theme = peerData.theme;
             state.blockImages = peerData.blockImages || {};
+            
+            renderer.gameBoard = container1.querySelector('.peer-game-board');
+            renderer.render();
 
-            boardElements.forEach(boardEl => {
-                renderer.gameBoard = boardEl;
-                renderer.render();
-            });
-        }
-
-        // Cleanup for disconnected/inactive peers
-        for (const clientId in peerRenderers) {
-            if (!activePeerData.some(p => p.clientId === clientId)) {
-                delete peerRenderers[clientId];
-            }
+            renderer.gameBoard = container2.querySelector('.peer-game-board');
+            renderer.render();
         }
 
         const numPeers = activePeerData.length;
