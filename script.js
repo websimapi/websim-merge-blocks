@@ -6,7 +6,7 @@ import { BoardRenderer } from './board-renderer.js';
 import { CombinationsDisplay } from './combinations-display.js';
 import { Carousel } from './carousel.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // DOM elements
     const titleScreen = document.getElementById('title-screen');
     const gameScreen = document.getElementById('game-screen');
@@ -17,9 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const difficultyButtons = document.querySelectorAll('.difficulty-btn');
     const themeInput = document.getElementById('theme-input');
     const combinationsContainer = document.getElementById('combinations-container');
+    const carouselWrapper = document.getElementById('game-carousel-wrapper');
+
+    // Multiplayer setup
+    const room = new WebsimSocket();
+    await room.initialize();
 
     // Initialize Title Screen Carousel
-    new Carousel('game-carousel');
+    new Carousel('game-carousel', room);
 
     const levelDescriptors = [
         "a basic", "an improved", "an advanced", "a superior", "a masterful", 
@@ -50,11 +55,27 @@ document.addEventListener('DOMContentLoaded', () => {
             boardRenderer.renderBlocks();
             manageBlockImages();
             combinationsDisplay.update();
+            updatePresence();
         } else {
             // Re-render to clear selection state if drag was invalid
             boardRenderer.renderBlocks();
         }
     };
+
+    function updatePresence() {
+        if (!room.clientId) return;
+
+        const presenceData = {
+            inGame: gameScreen.classList.contains('active'),
+            difficulty: gameState.currentDifficulty,
+            theme: gameState.theme,
+            gridSize: gameState.gridSize,
+            boardState: gameState.boardState,
+            blockImages: gameState.blockImages,
+            score: gameState.score,
+        };
+        room.updatePresence(presenceData);
+    }
 
     function prepareNextSpawn() {
         gameState.nextSpawnIndices = [];
@@ -122,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.render();
         manageBlockImages();
         combinationsDisplay.update();
+        updatePresence();
         prepareNextSpawn();
     }
 
@@ -176,6 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (boardChanged) {
             manageBlockImages();
             combinationsDisplay.update();
+            updatePresence();
         }
     }
 
@@ -215,6 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (boardChanged) {
             manageBlockImages();
             combinationsDisplay.update();
+            updatePresence();
         }
     }
 
@@ -236,6 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.render();
         manageBlockImages();
         combinationsDisplay.update();
+        updatePresence();
     }
 
     async function generateImageForValue(value) {
@@ -337,11 +362,13 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.render();
         manageBlockImages();
         combinationsDisplay.update();
+        updatePresence();
         prepareNextSpawn();
 
         titleScreen.classList.remove('active');
         gameScreen.classList.add('active');
         header.classList.add('in-game');
+        carouselWrapper.classList.add('in-game');
         
         setTimeout(() => {
             hourglassManager.create(
@@ -370,7 +397,9 @@ document.addEventListener('DOMContentLoaded', () => {
         gameBoard.innerHTML = '';
         hourglassManager.destroy();
         gameState.reset();
+        updatePresence();
         combinationsContainer.style.display = 'block';
+        carouselWrapper.classList.remove('in-game');
     }
 
     // Event listeners

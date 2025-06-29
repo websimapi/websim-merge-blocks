@@ -1,84 +1,117 @@
 // carousel.js
 export class Carousel {
-    constructor(containerId) {
+    constructor(containerId, room) {
         this.container = document.getElementById(containerId);
         if (!this.container) {
             console.error('Carousel container not found');
             return;
         }
-        this.totalSlots = 12;
-        this.activePlayers = 5; // Simulate a number of "active games"
-        this.blockColors = [
-            '#eee4da', '#ede0c8', '#f2b179', '#f59563',
-            '#f67c5f', '#f65e3b', '#edcf72', '#edcc61'
-        ];
+        this.room = room;
+        this.totalSlots = 12; // Maintain total slots for spacing
+        
         this.init();
+        
+        if (this.room) {
+            this.room.subscribePresence(() => this.updateCarousel());
+        }
     }
 
     init() {
-        const slots = this.generateSlots();
-        slots.forEach(slot => this.container.appendChild(slot));
-        // Clone for seamless scrolling
-        slots.forEach(slot => this.container.appendChild(slot.cloneNode(true)));
+        this.updateCarousel();
     }
 
-    generateSlots() {
-        const slots = [];
-        const playerIndices = this.distributePlayers();
+    updateCarousel() {
+        const players = Object.values(this.room.presence || {})
+            .filter(p => p.inGame && p.boardState && p.boardState.length > 0 && p.gridSize);
+        
+        const slots = this.generateSlots(players);
 
-        for (let i = 0; i < this.totalSlots; i++) {
-            const isPlayerSlot = playerIndices.includes(i);
-            slots.push(this.createCarouselItem(isPlayerSlot));
+        this.container.innerHTML = '';
+        slots.forEach(slot => this.container.appendChild(slot));
+
+        // Clone for seamless scrolling, only if there's content
+        if (slots.length > 0) {
+            slots.forEach(slot => this.container.appendChild(slot.cloneNode(true)));
         }
+    }
+    
+    generateSlots(players) {
+        const slots = [];
+        const numPlayers = players.length;
+
+        if (numPlayers === 0) {
+            // If no players, create empty placeholder slots
+            for (let i = 0; i < this.totalSlots; i++) {
+                slots.push(this.createCarouselItem(null));
+            }
+            return slots;
+        }
+        
+        // Distribute players across the total slots
+        const slotsPerPlayer = Math.max(1, Math.floor(this.totalSlots / numPlayers));
+        
+        for (let i = 0; i < numPlayers; i++) {
+            slots.push(this.createCarouselItem(players[i]));
+            // Add empty slots for spacing, but don't exceed total slots
+            for (let j = 0; j < slotsPerPlayer - 1 && slots.length < this.totalSlots; j++) {
+                slots.push(this.createCarouselItem(null));
+            }
+        }
+        
+        // Fill remaining slots if any
+        while (slots.length < this.totalSlots) {
+             slots.push(this.createCarouselItem(null));
+        }
+
         return slots;
     }
 
-    distributePlayers() {
-        const indices = new Set();
-        if (this.activePlayers >= this.totalSlots) {
-            return Array.from({ length: this.totalSlots }, (_, i) => i);
-        }
-        while (indices.size < this.activePlayers) {
-            indices.add(Math.floor(Math.random() * this.totalSlots));
-        }
-        return Array.from(indices);
-    }
-
-    createCarouselItem(isPlayer) {
+    createCarouselItem(playerData) {
         const item = document.createElement('div');
         item.classList.add('carousel-item');
         
-        if (!isPlayer) {
+        if (!playerData) {
             item.classList.add('empty');
             return item;
         }
 
-        const gridSize = 4;
+        const { gridSize, boardState, theme, blockImages } = playerData;
+        
+        if (!gridSize || !boardState || boardState.length !== gridSize * gridSize) {
+            item.classList.add('empty');
+            return item;
+        }
+        
         item.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
         item.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
 
-        let hasPulsingCell = false;
-
-        for (let i = 0; i < gridSize * gridSize; i++) {
+        for (let i = 0; i < boardState.length; i++) {
             const cell = document.createElement('div');
             cell.classList.add('carousel-cell');
             
-            // Populate some cells with blocks
-            if (Math.random() > 0.5) {
-                const value = Math.floor(Math.random() * 4) + 1;
-                cell.textContent = value;
-                cell.style.backgroundColor = this.blockColors[value-1] || '#3c3a32';
-                if (value < 3) {
-                    cell.style.color = '#776e65';
-                }
-                 // Add a pulsing animation to one block per item
-                if (!hasPulsingCell && Math.random() > 0.7) {
-                    cell.classList.add('pulsing');
-                    hasPulsingCell = true;
+            const value = boardState[i];
+            if (value > 0) {
+                const imageUrl = (blockImages || {})[value];
+                if (theme && imageUrl && imageUrl !== 'loading') {
+                     cell.innerHTML = `<img src="${imageUrl}" alt="Image for ${value}">`;
+                } else {
+                    cell.textContent = value;
+                    cell.style.backgroundColor = this.getBlockColor(value);
+                    if (value < 3) {
+                        cell.style.color = '#776e65';
+                    }
                 }
             }
             item.appendChild(cell);
         }
         return item;
+    }
+
+    getBlockColor(value) {
+        const colors = [
+            '#eee4da', '#ede0c8', '#f2b179', '#f59563',
+            '#f67c5f', '#f65e3b', '#edcf72', '#edcc61'
+        ];
+        return colors[value - 1] || '#3c3a32';
     }
 }

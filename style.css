@@ -33,13 +33,12 @@ body {
 header {
     width: 100%;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
     padding: 10px 0 20px 0;
     visibility: hidden;
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
-    display: none;
 }
 
 header.in-game {
@@ -332,6 +331,10 @@ h1 {
     background-color: #dcd0c4;
 }
 
+#combinations-list li.no-hint {
+    cursor: default;
+}
+
 #combinations-list li.no-hint:hover {
     background-color: var(--grid-cell-color);
     cursor: default;
@@ -367,12 +370,18 @@ h1 {
 .combo-part.block-8 { background-color: #edcc61; }
 
 #game-carousel-wrapper {
-    width: 100vw;
-    margin-top: 50px;
+    width: 100%;
+    margin: 50px 0 0 0;
     overflow: hidden;
     position: relative;
     -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
     mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    transition: margin 0.3s ease-in-out;
+}
+
+#game-carousel-wrapper.in-game {
+    margin: 0 0 20px 0;
+    width: 100vw;
 }
 
 #game-carousel {
@@ -409,6 +418,7 @@ h1 {
 .carousel-item.empty {
     background-color: transparent;
     box-shadow: none;
+    border: 2px dashed var(--grid-cell-color);
 }
 
 .carousel-cell {
