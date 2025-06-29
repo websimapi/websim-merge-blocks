@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function manageBlockImages() {
         if (!gameState.theme) return;
 
-        const uniqueValues = [...new Set(gameState.boardState.filter(v => v > 0))];
+        const uniqueValues = [...new Set(Object.values(gameState.boardState).filter(v => v > 0))];
         
         // Ensure images for current values are loading/loaded
         uniqueValues.forEach(value => {

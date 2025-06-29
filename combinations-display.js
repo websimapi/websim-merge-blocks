@@ -74,7 +74,7 @@ export class CombinationsDisplay {
         const { boardState, gridSize } = this.gameState;
         const matchingPairs = [];
 
-        for (let i = 0; i < boardState.length; i++) {
+        for (let i = 0; i < gridSize * gridSize; i++) {
             if (boardState[i] === 0) continue;
 
             const neighbors = this.getNeighborIndices(i, gridSize);
@@ -134,7 +134,7 @@ export class CombinationsDisplay {
         const { boardState, gridSize } = this.gameState;
         const checkedPairs = new Set();
 
-        for (let i = 0; i < boardState.length; i++) {
+        for (let i = 0; i < gridSize * gridSize; i++) {
             if (boardState[i] === 0) continue;
 
             const neighbors = this.getNeighborIndices(i, gridSize);
