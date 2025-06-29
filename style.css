@@ -29,14 +29,44 @@ body {
     width: 100vw;
     height: 100vh;
     z-index: -1;
+    overflow: hidden;
+    background-color: #faf8ef;
+}
+
+#lobby-scroller-wrapper {
+    position: absolute;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    animation-name: scroll-diagonal;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+#lobby-scroller-wrapper.active {
+    animation-play-state: running;
+}
+
+#lobby-scroller-wrapper.paused {
+    animation-play-state: paused;
+}
+
+.lobby-scroller-content {
     display: flex;
     flex-wrap: wrap;
     gap: 20px;
     padding: 20px;
-    justify-content: center;
+    justify-content: flex-start;
     align-content: flex-start;
-    overflow-y: auto;
-    background-color: #faf8ef;
+}
+
+@keyframes scroll-diagonal {
+    0% {
+        transform: translate3d(0, 0, 0);
+    }
+    100% {
+        transform: translate3d(-50%, 50%, 0);
+    }
 }
 
 #app {
