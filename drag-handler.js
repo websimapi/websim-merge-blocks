@@ -197,6 +197,7 @@ export class DragHandler {
             if (isNeighbor) {
                 this.gameState.placeBlock(endIndex, startValue);
                 this.gameState.removeBlock(startIndex);
+                this.gameState.logEvent('move', { from: startIndex, to: endIndex, value: startValue });
                 boardChanged = true;
             }
         } else {
@@ -209,12 +210,14 @@ export class DragHandler {
                 this.gameState.placeBlock(endIndex, mergedValue);
                 this.gameState.removeBlock(startIndex);
                 this.gameState.updateScore(mergedValue);
+                this.gameState.logEvent('merge', { from: startIndex, to: endIndex, value: startValue, result: mergedValue, scoreChange: mergedValue });
                 boardChanged = true;
             } else if (isNeighbor && sumValue % 2 === 0) {
                 const halfValue = sumValue / 2;
                 this.gameState.placeBlock(startIndex, halfValue);
                 this.gameState.placeBlock(endIndex, halfValue);
                 this.gameState.updateScore(halfValue * 2);
+                this.gameState.logEvent('split', { from: startIndex, to: endIndex, values: [startValue, endValue], result: halfValue, scoreChange: halfValue * 2 });
                 boardChanged = true;
             }
         }

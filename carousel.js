@@ -159,20 +159,10 @@ export class Carousel {
 
     setupGlobalDragListeners() {
         document.addEventListener('mousemove', (e) => this.handleDragMove(e));
-        document.addEventListener('touchmove', (e) => {
-            // Ensure there's a touch point before proceeding
-            if (e.touches && e.touches.length > 0) {
-                this.handleDragMove(e.touches[0]);
-            }
-        }, { passive: false });
+        document.addEventListener('touchmove', (e) => this.handleDragMove(e.touches[0]), { passive: false });
         
         document.addEventListener('mouseup', (e) => this.handleDragEnd(e));
-        document.addEventListener('touchend', (e) => {
-            // Ensure there's a touch point before proceeding
-            if (e.changedTouches && e.changedTouches.length > 0) {
-                this.handleDragEnd(e.changedTouches[0]);
-            }
-        });
+        document.addEventListener('touchend', (e) => this.handleDragEnd(e.changedTouches[0]));
     }
 
     handleDragStart(e, item) {
@@ -190,7 +180,7 @@ export class Carousel {
     }
 
     handleDragMove(e) {
-        if (!this.isDragging || !this.dragStartData || !e) return;
+        if (!this.isDragging) return;
 
         const startPos = { x: this.dragStartData.startX, y: this.dragStartData.startY };
         const currentPos = { x: e.clientX, y: e.clientY };
@@ -201,13 +191,13 @@ export class Carousel {
         });
 
         const dropTarget = this.getDropTarget(e.clientX, e.clientY);
-        if (dropTarget && dropTarget.element && dropTarget.element !== this.dragStartData.element) {
-            dropTarget.element.classList.add('dragging-over');
+        if (dropTarget && dropTarget !== this.dragStartData.element) {
+            dropTarget.classList.add('dragging-over');
         }
     }
 
     handleDragEnd(e) {
-        if (!this.isDragging || !e) return;
+        if (!this.isDragging) return;
 
         this.removeDragLine();
         document.body.style.cursor = 'default';

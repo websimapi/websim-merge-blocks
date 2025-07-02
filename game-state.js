@@ -20,11 +20,14 @@ export class GameState {
         this.theme = null;
         this.blockImages = {};
         this.nextSpawnIndices = [];
+        this.eventLog = [];
     }
     
     initializeGame(difficulty, theme) {
         this.currentDifficulty = difficulty;
         this.theme = theme;
+        this.eventLog = [];
+        this.logEvent('game_start', { difficulty, theme });
         // Preserve pre-loaded images if they exist
         if (Object.keys(this.blockImages).length === 0) {
             this.blockImages = {};
@@ -120,6 +123,14 @@ export class GameState {
     
     getSelectedBlockIndex() {
         return this.selectedBlockIndex;
+    }
+
+    logEvent(type, data) {
+        this.eventLog.push({
+            type,
+            data,
+            timestamp: new Date().toISOString()
+        });
     }
 
     getImageForValue(value) {

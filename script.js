@@ -23,6 +23,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mergeDifficultyButtons = document.getElementById('merge-difficulty-buttons');
     const mergeConfirmBtn = document.getElementById('merge-confirm-btn');
     const mergeCancelBtn = document.getElementById('merge-cancel-btn');
+    const gameOverModal = document.getElementById('game-over-modal');
+    const finalScoreSpan = document.getElementById('final-score');
+    const submitScoreBtn = document.getElementById('submit-score-btn');
+    const playAgainBtn = document.getElementById('play-again-btn');
+    const leaderboardBtn = document.getElementById('leaderboard-btn');
+    const leaderboardModal = document.getElementById('leaderboard-modal');
+    const closeLeaderboardBtn = document.getElementById('close-leaderboard-btn');
+    const leaderboardTableBody = document.querySelector('#leaderboard-table tbody');
 
     // Multiplayer setup
     const room = new WebsimSocket();
@@ -122,7 +130,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const actualNumToSpawn = Math.min(numToSpawn, availableSlots);
 
-        if (actualNumToSpawn === 0 && availableSlots > 0 && gameState.nextSpawnIndices.length === 0) {
+        if (actualNumToSpawn === 0 && availableSlots === 0 && gameState.nextSpawnIndices.length === 0) {
+            if (gameState.currentDifficulty === 'zen') {
+                console.log("Grid full in Zen mode - continuing without spawning");
+                hourglassManager.reset();
+                return;
+            } else {
+                console.log("Game Over - No empty cells to spawn a new block.");
+                gameOver();
+                return;
+            }
+        } else if (actualNumToSpawn === 0 && availableSlots > 0 && gameState.nextSpawnIndices.length === 0) {
              // Edge case: if we can't spawn the desired number, but there's space,
              // and no spawns are queued, queue at least one.
              const randomEmptyCellIndex = Math.floor(Math.random() * emptyCells.length);
@@ -158,7 +176,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         spawnIndices.forEach(boardIndex => {
             // Only spawn if the index is still in the queue (wasn't spawned early)
             if (gameState.nextSpawnIndices.includes(boardIndex)) {
-                gameState.placeBlock(boardIndex, gameState.getNewBlockValue());
+                const newValue = gameState.getNewBlockValue();
+                gameState.placeBlock(boardIndex, newValue);
+                gameState.logEvent('spawn', { at: boardIndex, value: newValue });
             }
         });
         
@@ -173,8 +193,70 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function gameOver() {
         hourglassManager.destroy();
-        alert(`Game Over! Final Score: ${gameState.score}`);
-        showTitleScreen();
+        gameState.logEvent('game_over', { score: gameState.score });
+        
+        finalScoreSpan.textContent = gameState.score;
+        submitScoreBtn.disabled = false;
+        submitScoreBtn.textContent = 'Submit Score';
+        gameOverModal.style.display = 'flex';
+    }
+
+    async function submitScore() {
+        if (!room.clientId) {
+            alert("Could not submit score: Not connected.");
+            return;
+        }
+        submitScoreBtn.disabled = true;
+        submitScoreBtn.textContent = 'Submitting...';
+
+        try {
+            await room.collection('scores').create({
+                score: gameState.score,
+                difficulty: gameState.currentDifficulty,
+                theme: gameState.theme || 'default',
+                event_log: gameState.eventLog
+            });
+            submitScoreBtn.textContent = 'Submitted!';
+        } catch (error) {
+            console.error("Failed to submit score:", error);
+            alert("There was an error submitting your score. Please try again.");
+            submitScoreBtn.disabled = false;
+            submitScoreBtn.textContent = 'Submit Score';
+        }
+    }
+
+    async function showLeaderboard() {
+        leaderboardTableBody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+        leaderboardModal.style.display = 'flex';
+
+        try {
+            const leaders = await room.query(
+                `SELECT s.score, s.difficulty, s.theme, u.username 
+                 FROM public.scores s 
+                 JOIN public.user u ON s.user_id = u.id 
+                 ORDER BY s.score DESC 
+                 LIMIT 20`
+            );
+
+            if (leaders.length === 0) {
+                leaderboardTableBody.innerHTML = '<tr><td colspan="5">No scores submitted yet. Be the first!</td></tr>';
+                return;
+            }
+
+            leaderboardTableBody.innerHTML = leaders.map((entry, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${entry.username}</td>
+                    <td>${entry.score}</td>
+                    <td>${entry.theme || 'blocks'}</td>
+                    <td>${entry.difficulty}</td>
+                </tr>
+            `).join('');
+
+        } catch (error) {
+            console.error("Failed to fetch leaderboard:", error);
+            leaderboardTableBody.innerHTML = '<tr><td colspan="5">Could not load leaderboard.</td></tr>';
+        }
     }
 
     function handleMergeRequest(startPlayer, endPlayer) {
@@ -292,6 +374,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             gameState.placeBlock(clickedIndex, mergedValue);
             gameState.removeBlock(selectedIndex);
             gameState.updateScore(mergedValue);
+            gameState.logEvent('merge', { from: selectedIndex, to: clickedIndex, value: selectedValue, result: mergedValue, scoreChange: mergedValue });
             gameState.deselectBlock();
             boardChanged = true;
         } else if (isNeighbor && sumValue % 2 === 0) {
@@ -299,6 +382,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             gameState.placeBlock(selectedIndex, halfValue);
             gameState.placeBlock(clickedIndex, halfValue);
             gameState.updateScore(halfValue * 2);
+            gameState.logEvent('split', { from: selectedIndex, to: clickedIndex, values: [selectedValue, clickedValue], result: halfValue, scoreChange: halfValue * 2 });
             gameState.deselectBlock();
             boardChanged = true;
         } else {
@@ -328,15 +412,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         let boardChanged = false;
 
         if (!gameState.hasSelectedBlock()) {
-            gameState.placeBlock(clickedIndex, gameState.getNewBlockValue());
+            const newValue = gameState.getNewBlockValue();
+            gameState.placeBlock(clickedIndex, newValue);
+            gameState.logEvent('place_new', { at: clickedIndex, value: newValue });
             boardChanged = true;
         } else {
             const selectedIndex = gameState.getSelectedBlockIndex();
             const isNeighbor = gameState.areNeighbors(selectedIndex, clickedIndex);
 
             if (isNeighbor) {
-                gameState.placeBlock(clickedIndex, gameState.getBlockValue(selectedIndex));
+                const value = gameState.getBlockValue(selectedIndex);
+                gameState.placeBlock(clickedIndex, value);
                 gameState.removeBlock(selectedIndex);
+                gameState.logEvent('move', { from: selectedIndex, to: clickedIndex, value });
                 gameState.deselectBlock();
                 boardChanged = true;
             } else {
@@ -359,7 +447,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Place the new block
-        gameState.placeBlock(index, gameState.getNewBlockValue());
+        const newValue = gameState.getNewBlockValue();
+        gameState.placeBlock(index, newValue);
+        gameState.logEvent('spawn_early', { at: index, value: newValue });
 
         // Remove from the spawn queue
         const queueIndex = gameState.nextSpawnIndices.indexOf(index);
@@ -391,6 +481,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 aspect: "square"
             });
             gameState.setImageForValue(value, result.url);
+            gameState.logEvent('image_generated', { value, url: result.url });
         } catch (error) {
             console.error(`Failed to generate image for value ${value}:`, error);
             // Revert status if generation fails
@@ -568,5 +659,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 button.classList.add('selected');
             }
         });
+    });
+
+    // Game Over modal listeners
+    submitScoreBtn.addEventListener('click', submitScore);
+    playAgainBtn.addEventListener('click', () => {
+        gameOverModal.style.display = 'none';
+        showTitleScreen();
+    });
+
+    // Leaderboard listeners
+    leaderboardBtn.addEventListener('click', showLeaderboard);
+    closeLeaderboardBtn.addEventListener('click', () => {
+        leaderboardModal.style.display = 'none';
     });
 });
